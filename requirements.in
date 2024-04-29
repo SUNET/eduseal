@@ -1,7 +1,4 @@
-uvicorn[standard]
-gunicorn
 pyhanko
-fastapi
 asyncpg
 cryptography
 requests
