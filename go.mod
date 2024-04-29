@@ -4,8 +4,6 @@ go 1.22
 
 replace github.com/masv3971/goladok3 => ../goladok3
 
-replace github.com/masv3971/gosdjwt => ../gosdjwt
-
 replace github.com/masv3971/gosunetca => ../gosunetca
 
 replace github.com/masv3971/godc4eu => ../godc4eu

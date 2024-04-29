@@ -520,7 +520,6 @@ gorm.io/gorm/logger
 gorm.io/gorm/schema
 gorm.io/gorm/utils
 # github.com/masv3971/goladok3 => ../goladok3
-# github.com/masv3971/gosdjwt => ../gosdjwt
 # github.com/masv3971/gosunetca => ../gosunetca
 # github.com/masv3971/godc4eu => ../godc4eu
 # github.com/masv3971/goretask => ../goretask
