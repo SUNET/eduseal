@@ -1,0 +1,17 @@
+uvicorn[standard]
+gunicorn
+pyhanko
+fastapi
+asyncpg
+cryptography
+requests
+openapi_schema_validator
+pkgutil-resolve-name
+importlib-resources
+zipp
+importlib-metadata
+exceptiongroup
+setuptools
+python-pkcs11
+retask
+kafka-python
