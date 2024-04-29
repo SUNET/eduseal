@@ -1,0 +1,208 @@
+basePath: /api/v1
+definitions:
+  apiv1.PDFGetSignedReply:
+    properties:
+      data:
+        properties:
+          document:
+            $ref: '#/definitions/types.Document'
+          message:
+            type: string
+        type: object
+    type: object
+  apiv1.PDFRevokeReply:
+    properties:
+      data:
+        properties:
+          status:
+            type: boolean
+        type: object
+    type: object
+  apiv1.PDFSignReply:
+    properties:
+      data:
+        properties:
+          transaction_id:
+            type: string
+        required:
+        - transaction_id
+        type: object
+    type: object
+  apiv1.PDFSignRequest:
+    properties:
+      pdf:
+        type: string
+    required:
+    - pdf
+    type: object
+  apiv1.PDFValidateReply:
+    properties:
+      data:
+        $ref: '#/definitions/types.Validation'
+    type: object
+  apiv1.PDFValidateRequest:
+    properties:
+      pdf:
+        type: string
+    type: object
+  helpers.Error:
+    properties:
+      details: {}
+      title:
+        type: string
+    type: object
+  helpers.ErrorResponse:
+    properties:
+      error:
+        $ref: '#/definitions/helpers.Error'
+    type: object
+  types.Document:
+    properties:
+      base64_data:
+        type: string
+      contact_info:
+        type: string
+      create_ts:
+        type: integer
+      error:
+        type: string
+      location:
+        type: string
+      message:
+        type: string
+      modify_ts:
+        type: integer
+      name:
+        type: string
+      reason:
+        type: string
+      revoked_ts:
+        type: integer
+      transaction_id:
+        type: string
+    type: object
+  types.Validation:
+    properties:
+      error:
+        type: string
+      is_revoked:
+        type: boolean
+      message:
+        type: string
+      transaction_id:
+        type: string
+      valid_signature:
+        type: boolean
+    type: object
+info:
+  contact: {}
+  title: Datastore API
+  version: 0.1.0
+paths:
+  /ladok/pdf/{transaction_id}:
+    get:
+      consumes:
+      - application/json
+      description: fetch a singed pdf
+      operationId: ladok-pdf-fetch
+      parameters:
+      - description: transaction_id
+        in: path
+        name: transaction_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/apiv1.PDFGetSignedReply'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/helpers.ErrorResponse'
+      summary: fetch singed pdf
+      tags:
+      - ladok
+  /ladok/pdf/revoke/{transaction_id}:
+    put:
+      consumes:
+      - application/json
+      description: revoke a singed pdf
+      operationId: ladok-pdf-revoke
+      parameters:
+      - description: transaction_id
+        in: path
+        name: transaction_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/apiv1.PDFRevokeReply'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/helpers.ErrorResponse'
+      summary: revoke signed pdf
+      tags:
+      - ladok
+  /ladok/pdf/sign:
+    post:
+      consumes:
+      - application/json
+      description: sign base64 encoded PDF
+      operationId: ladok-pdf-sign
+      parameters:
+      - description: ' '
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/apiv1.PDFSignRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/apiv1.PDFSignReply'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/helpers.ErrorResponse'
+      summary: Sign pdf
+      tags:
+      - ladok
+  /ladok/pdf/validate:
+    post:
+      consumes:
+      - application/json
+      description: validate a signed base64 encoded PDF
+      operationId: ladok-pdf-validate
+      parameters:
+      - description: ' '
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/apiv1.PDFValidateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/apiv1.PDFValidateReply'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/helpers.ErrorResponse'
+      summary: Validate pdf
+      tags:
+      - ladok
+swagger: "2.0"

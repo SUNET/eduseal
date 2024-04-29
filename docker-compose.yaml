@@ -1,0 +1,132 @@
+---
+version: "3"
+
+services:
+  apigw:
+    container_name: "eduseal_dev_apigw"
+    image: docker.sunet.se/eduseal/apigw:latest
+    restart: always
+    volumes:
+      - ./config.yaml:/config.yaml:ro
+      - /var/log/sunet:/var/log/sunet
+    depends_on:
+      - redis
+      - mongo
+    networks:
+      eduseal-dev-net:
+        ipv4_address: 172.20.50.2
+    environment:
+      - "VC_CONFIG_YAML=config.yaml"
+
+  cache:
+    container_name: "eduseal_dev_cache"
+    image: docker.sunet.se/eduseal/cache:latest
+    restart: always
+    volumes:
+      - ./config.yaml:/config.yaml:ro
+    depends_on:
+      - redis
+    networks:
+      eduseal-dev-net:
+        ipv4_address: 172.20.50.10
+    environment:
+      - "VC_CONFIG_YAML=config.yaml"
+
+  persistent:
+    container_name: "eduseal_dev_persistent"
+    image: docker.sunet.se/eduseal/persistent:latest
+    restart: always
+    volumes:
+      - ./config.yaml:/config.yaml:ro
+    depends_on:
+      - redis
+      - mongo
+    networks:
+      eduseal-dev-net:
+        ipv4_address: 172.20.50.12
+    environment:
+      - "VC_CONFIG_YAML=config.yaml"
+
+  pdfsigner:
+    container_name: "eduseal_dev_pdfsigner"
+    image: docker.sunet.se/dc4eu/py_pdfsigner_dev:latest
+    restart: always
+    volumes:
+      - ./config.yaml:/config.yaml:ro
+      - /var/log/sunet:/var/log/sunet
+    depends_on:
+      - redis
+    networks:
+      eduseal-dev-net:
+        ipv4_address: 172.20.50.14
+    environment:
+      - "CONFIG_YAML=config.yaml"
+
+  pdfvalidator:
+    container_name: "eduseal_dev_pdfvalidator"
+    image: docker.sunet.se/dc4eu/py_pdfvalidator_dev:latest
+    restart: always
+    volumes:
+      - ./config.yaml:/config.yaml:ro
+      - /var/log/sunet:/var/log/sunet
+    # - ./certs/SectigoRSADocumentSigningCA.crt:/app/SectigoRSADocumentSigningCA.crt:ro
+    # - ./certs/USERTrustRSAAddTrustCA.crt:/app/USERTrustRSAAddTrustCA.crt:ro
+    depends_on:
+      - redis
+    networks:
+      eduseal-dev-net:
+        ipv4_address: 172.20.50.16
+    environment:
+      - "CONFIG_YAML=config.yaml"
+
+  redis:
+    image: redis:alpine
+    container_name: "eduseal_dev_redis"
+    restart: always
+    expose:
+      - 6373
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    networks:
+      eduseal-dev-net:
+        ipv4_address: 172.20.50.18
+
+  mongo:
+    image: mongo:4.0.10
+    container_name: "eduseal_dev_mongo"
+    restart: always
+    expose:
+      - 27017
+    volumes:
+      - mongo_data:/data
+    networks:
+      eduseal-dev-net:
+        ipv4_address: 172.20.50.20
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: eduseal_dev_jaeger
+    restart: always
+    expose:
+      - 16686
+      - 4317
+      - 4318
+    networks:
+      eduseal-dev-net:
+        ipv4_address: 172.20.50.22
+    environment:
+      - "COLLECTOR_OTLP_ENABLED=true"
+
+networks:
+  eduseal-dev-net:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: br-eduseal-dev
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.20.50.0/24
+volumes:
+  redis_data:
+  mongo_data:

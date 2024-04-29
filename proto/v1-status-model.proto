@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package v1.status;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "eduseal/internal/gen/status/apiv1.status";
+
+
+message StatusRequest {}
+
+message StatusReply {
+    message Data {
+        string serviceName = 1;
+        BuildVariables build_variables = 2;
+        repeated StatusProbe probes = 3;
+        string status = 4;
+    }
+    Data data = 10;
+}
+
+message StatusProbe {
+    string name = 1;
+    bool healthy = 2;
+    string message = 3;
+    google.protobuf.Timestamp lastCheckedTS = 4;
+}
+
+message BuildVariables {
+    string git_commit = 1;
+    string git_branch = 2;
+    string timestamp = 3;
+    string go_version = 4;
+    string go_arch = 5;
+    string version = 6;
+}
+
+message StatusProbeStore {
+    google.protobuf.Timestamp nextCheck = 1;
+    StatusProbe previousResult = 2;
+}

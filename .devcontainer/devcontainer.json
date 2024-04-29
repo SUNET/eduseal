@@ -1,0 +1,34 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/go
+{
+	"name": "Go",
+	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
+	"image": "mcr.microsoft.com/devcontainers/go:latest",
+	"customizations": {
+		"vscode": {
+			"settings": {
+				"cSpell.language": "en-GB,en,sv"
+			},
+			"extensions": [
+				"GitHub.vscode-pull-request-github",
+				"streetsidesoftware.code-spell-checker",
+				"DavidAnson.vscode-markdownlint",
+				"zenor.makefile-creator",
+				"bungcip.better-toml",
+				"Plex.vscode-protolint",
+				"ms-azuretools.vscode-docker",
+				"zenghongtu.vscode-asciiflow2",
+				"ms-python.python"
+			]
+		}
+	},
+	"mounts": [
+		"source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind",
+		"source=${localEnv:HOME}/work/SUNET/goladok3/,target=/workspaces/goladok3,type=bind,consistency=cached",
+		"source=${localEnv:HOME}/work/SUNET/gosdjwt/,target=/workspaces/gosdjwt,type=bind,consistency=cached",
+		"source=${localEnv:HOME}/work/SUNET/gosunetca/,target=/workspaces/gosunetca,type=bind,consistency=cached",
+		"source=${localEnv:HOME}/work/SUNET/goretask/,target=/workspaces/goretask,type=bind,consistency=cached"
+	],
+	"postCreateCommand": "make vscode",
+	"remoteUser": "vscode"
+}
