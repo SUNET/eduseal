@@ -16,7 +16,7 @@ services:
       eduseal-dev-net:
         ipv4_address: 172.20.50.2
     environment:
-      - "VC_CONFIG_YAML=config.yaml"
+      - "EDUSEAL_CONFIG_YAML=config.yaml"
 
   cache:
     container_name: "eduseal_dev_cache"
@@ -30,7 +30,7 @@ services:
       eduseal-dev-net:
         ipv4_address: 172.20.50.10
     environment:
-      - "VC_CONFIG_YAML=config.yaml"
+      - "EDUSEAL_CONFIG_YAML=config.yaml"
 
   persistent:
     container_name: "eduseal_dev_persistent"
@@ -45,11 +45,11 @@ services:
       eduseal-dev-net:
         ipv4_address: 172.20.50.12
     environment:
-      - "VC_CONFIG_YAML=config.yaml"
+      - "EDUSEAL_CONFIG_YAML=config.yaml"
 
-  pdfsigner:
-    container_name: "eduseal_dev_pdfsigner"
-    image: docker.sunet.se/dc4eu/py_pdfsigner_dev:latest
+  sealer_1:
+    container_name: "eduseal_dev_sealer_1"
+    image: docker.sunet.se/eduseal/sealer_softhsm_grpc:latest
     restart: always
     volumes:
       - ./config.yaml:/config.yaml:ro
@@ -60,24 +60,54 @@ services:
       eduseal-dev-net:
         ipv4_address: 172.20.50.14
     environment:
-      - "CONFIG_YAML=config.yaml"
+      - "EDUSEAL_CONFIG_YAML=config.yaml"
 
-  pdfvalidator:
-    container_name: "eduseal_dev_pdfvalidator"
-    image: docker.sunet.se/dc4eu/py_pdfvalidator_dev:latest
-    restart: always
-    volumes:
-      - ./config.yaml:/config.yaml:ro
-      - /var/log/sunet:/var/log/sunet
-    # - ./certs/SectigoRSADocumentSigningCA.crt:/app/SectigoRSADocumentSigningCA.crt:ro
-    # - ./certs/USERTrustRSAAddTrustCA.crt:/app/USERTrustRSAAddTrustCA.crt:ro
-    depends_on:
-      - redis
-    networks:
-      eduseal-dev-net:
-        ipv4_address: 172.20.50.16
-    environment:
-      - "CONFIG_YAML=config.yaml"
+  #sealer_2:
+  #  container_name: "eduseal_dev_sealer_2"
+  #  image: docker.sunet.se/eduseal/sealer_softhsm_gprc:latest
+  #  restart: always
+  #  volumes:
+  #    - ./config.yaml:/config.yaml:ro
+  #    - /var/log/sunet:/var/log/sunet
+  #  depends_on:
+  #    - redis
+  #  networks:
+  #    eduseal-dev-net:
+  #      ipv4_address: 172.20.50.15
+  #  environment:
+  #    - "EDUSEAL_CONFIG_YAML=config.yaml"
+
+  #validator_1:
+  #  container_name: "eduseal_dev_validator_1"
+  #  image: docker.sunet.se/eduseal/validator_grpc:latest
+  #  restart: always
+  #  volumes:
+  #    - ./config.yaml:/config.yaml:ro
+  #    - /var/log/sunet:/var/log/sunet
+  #    - ./validation_certificates/softhsm:/validation_certificates:ro
+  #  depends_on:
+  #    - redis
+  #  networks:
+  #    eduseal-dev-net:
+  #      ipv4_address: 172.20.50.16
+  #  environment:
+  #    - "EDUSEAL_CONFIG_YAML=config.yaml"
+
+  #validator_2:
+  #  container_name: "eduseal_dev_validator_2"
+  #  image: docker.sunet.se/eduseal/validator_grpc:latest
+  #  restart: always
+  #  volumes:
+  #    - ./config.yaml:/config.yaml:ro
+  #    - /var/log/sunet:/var/log/sunet
+  #    - ./validation_certificates/softhsm:/validation_certificates:ro
+  #  depends_on:
+  #    - redis
+  #  networks:
+  #    eduseal-dev-net:
+  #      ipv4_address: 172.20.50.17
+  #  environment:
+  #    - "EDUSEAL_CONFIG_YAML=config.yaml"
 
   redis:
     image: redis:alpine

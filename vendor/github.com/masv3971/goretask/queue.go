@@ -15,7 +15,6 @@ type Queue struct {
 
 // Enqueue adds a new task to the queue
 func (q *Queue) Enqueue(ctx context.Context, data []byte) (*Job, error) {
-	//c.setNewURN()
 	job := newJob(ctx, q.redisClient)
 
 	task, err := makeWrapper(data, job.urn)

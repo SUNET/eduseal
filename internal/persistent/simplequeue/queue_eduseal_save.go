@@ -3,10 +3,10 @@ package simplequeue
 import (
 	"context"
 	"eduseal/pkg/logger"
+	"eduseal/pkg/model"
 	"encoding/json"
 
 	retask "github.com/masv3971/goretask"
-	"github.com/masv3971/gosunetca/types"
 	"go.opentelemetry.io/otel/codes"
 )
 
@@ -34,7 +34,7 @@ func NewEduSealPersistentSave(ctx context.Context, service *Service, queueName s
 // Enqueue publishes a document to the queue
 func (s *EduSealPersistentSave) Enqueue(ctx context.Context, message any) (*retask.Job, error) {
 	s.log.Info("Enqueue delete signed pdf")
-	ctx, span := s.service.tp.Start(ctx, "simplequeue:EduSealPersistentSave:Enqueue")
+	ctx, span := s.service.tp.Start(ctx, "simplequeue:EduSeal:PersistentSave:Enqueue")
 	defer span.End()
 
 	data, err := json.Marshal(message)
@@ -48,14 +48,14 @@ func (s *EduSealPersistentSave) Enqueue(ctx context.Context, message any) (*reta
 
 // Dequeue dequeues a document from the queue
 func (s *EduSealPersistentSave) Dequeue(ctx context.Context) error {
-	ctx, span := s.service.tp.Start(ctx, "simplequeue:EduSealPersistentSave:Dequeue")
+	ctx, span := s.service.tp.Start(ctx, "simplequeue:EduSeal:PersistentSave:Dequeue")
 	defer span.End()
 	return nil
 }
 
 // Wait waits for the next message
 func (s *EduSealPersistentSave) Wait(ctx context.Context) (*retask.Task, error) {
-	ctx, span := s.service.tp.Start(ctx, "simplequeue:EduSealPersistentSave:Wait")
+	ctx, span := s.service.tp.Start(ctx, "simplequeue:EduSeal:PersistentSave:Wait")
 	defer span.End()
 
 	task, err := s.Queue.Wait(ctx)
@@ -69,7 +69,7 @@ func (s *EduSealPersistentSave) Wait(ctx context.Context) (*retask.Task, error) 
 
 // Worker is the worker
 func (s *EduSealPersistentSave) Worker(ctx context.Context) error {
-	ctx, span := s.service.tp.Start(ctx, "simplequeue:EduSealPersistentSave:Worker")
+	ctx, span := s.service.tp.Start(ctx, "simplequeue:EduSeal:PersistentSave:Worker")
 	defer span.End()
 
 	var (
@@ -94,14 +94,18 @@ func (s *EduSealPersistentSave) Worker(ctx context.Context) error {
 			return err
 		case task := <-taskChan:
 			s.log.Info("Got task", "task", task.Data)
-			document := &types.Document{}
+			document := &model.Document{}
 			if err := json.Unmarshal([]byte(task.Data), document); err != nil {
 				span.SetStatus(codes.Error, err.Error())
 				s.log.Error(err, "Unmarshal failed")
 			}
-			if err := s.service.db.EduSealDocumentColl.Save(ctx, document); err != nil {
-				span.SetStatus(codes.Error, err.Error())
-				s.log.Error(err, "SaveSigned failed")
+			if s.service.cfg.Common.Mongo.Disable {
+				s.log.Info("Not saving document")
+			} else {
+				if err := s.service.db.EduSealDocumentColl.Save(ctx, document); err != nil {
+					span.SetStatus(codes.Error, err.Error())
+					s.log.Error(err, "SaveSigned failed")
+				}
 			}
 
 		case <-ctx.Done():

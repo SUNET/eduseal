@@ -1,4 +1,5 @@
 pyhanko
+pydantic
 asyncpg
 cryptography
 requests
@@ -12,3 +13,8 @@ setuptools
 python-pkcs11
 retask
 kafka-python
+grpcio-tools
+grpcio
+grpclib
+protobuf
+redis

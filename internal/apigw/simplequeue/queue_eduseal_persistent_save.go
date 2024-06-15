@@ -9,14 +9,14 @@ import (
 	"go.opentelemetry.io/otel/codes"
 )
 
-// EduSealPersistentSave holds the ladok delete signed queue
+// EduSealPersistentSave holds the EduSeal delete signed queue
 type EduSealPersistentSave struct {
 	service *Service
 	log     *logger.Log
 	*retask.Queue
 }
 
-// NewEduSealPersistentSave creates a new ladok delete signed queue
+// NewEduSealPersistentSave creates a new EduSeal delete signed queue
 func NewEduSealPersistentSave(ctx context.Context, service *Service, queueName string, log *logger.Log) (*EduSealDelSigned, error) {
 	eduSealPersistentSave := &EduSealDelSigned{
 		service: service,

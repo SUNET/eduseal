@@ -2,23 +2,19 @@ module eduseal
 
 go 1.22
 
-replace github.com/masv3971/goladok3 => ../goladok3
-
-replace github.com/masv3971/gosunetca => ../gosunetca
-
-replace github.com/masv3971/godc4eu => ../godc4eu
-
 replace github.com/masv3971/goretask => ../goretask
 
 require (
+	github.com/MicahParks/keyfunc v1.9.0
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-logr/logr v1.4.1
 	github.com/go-logr/zapr v1.3.0
 	github.com/go-playground/validator/v10 v10.19.0
+	github.com/golang-jwt/jwt/v4 v4.4.2
 	github.com/google/uuid v1.6.0
 	github.com/kelseyhightower/envconfig v1.4.0
+	github.com/lithammer/shortuuid/v4 v4.0.0
 	github.com/masv3971/goretask v0.0.0-20240112121936-7f1366ce1e15
-	github.com/masv3971/gosunetca v0.0.4
 	github.com/moogar0880/problems v0.1.1
 	github.com/redis/go-redis/v9 v9.5.1
 	github.com/stretchr/testify v1.9.0
@@ -32,6 +28,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.26.0
 	go.opentelemetry.io/otel/trace v1.26.0
 	go.uber.org/zap v1.27.0
+	google.golang.org/grpc v1.63.2
 	google.golang.org/protobuf v1.33.0
 	gopkg.in/yaml.v2 v2.4.0
 	gorm.io/gorm v1.25.9
@@ -92,6 +89,5 @@ require (
 	golang.org/x/tools v0.20.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240415180920-8c6c420018be // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240415180920-8c6c420018be // indirect
-	google.golang.org/grpc v1.63.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

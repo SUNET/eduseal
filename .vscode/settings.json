@@ -3,6 +3,10 @@
         "apigw",
         "apiv",
         "eduseal",
-        "kvclient"
+        "goretask",
+        "kvclient",
+        "masv",
+        "pydantic",
+        "simplequeue"
     ]
 }

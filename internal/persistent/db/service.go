@@ -38,16 +38,17 @@ func New(ctx context.Context, cfg *model.Cfg, tp *trace.Tracer, log *logger.Log)
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 
-	if err := service.connect(ctx); err != nil {
-		return nil, err
-	}
-
-	service.EduSealDocumentColl = &EduSealDocColl{
-		service: service,
-		coll:    service.dbClient.Database("eduseal").Collection("documents"),
-	}
-	if err := service.EduSealDocumentColl.createIndex(ctx); err != nil {
-		return nil, err
+	if !service.cfg.Common.Mongo.Disable {
+		if err := service.connect(ctx); err != nil {
+			return nil, err
+		}
+		service.EduSealDocumentColl = &EduSealDocColl{
+			service: service,
+			coll:    service.dbClient.Database("eduseal").Collection("revoke"),
+		}
+		if err := service.EduSealDocumentColl.createIndex(ctx); err != nil {
+			return nil, err
+		}
 	}
 
 	service.log.Info("Started")
@@ -69,9 +70,14 @@ func (s *Service) Status(ctx context.Context) *apiv1_status.StatusProbe {
 		LastCheckedTS: timestamppb.Now(),
 	}
 
-	if err := s.dbClient.Ping(ctx, nil); err != nil {
-		probe.Message = err.Error()
-		probe.Healthy = false
+	if s.cfg.Common.Mongo.Disable {
+		probe.Message = "OK-disabled_db"
+
+	} else {
+		if err := s.dbClient.Ping(ctx, nil); err != nil {
+			probe.Message = err.Error()
+			probe.Healthy = false
+		}
 	}
 
 	s.probeStore.PreviousResult = probe

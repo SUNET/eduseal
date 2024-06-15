@@ -16,9 +16,19 @@ type Job struct {
 	Result      *Task
 }
 
+var testUUID = ""
+
 func newJob(ctx context.Context, redisClient *redis.Client) *Job {
+	var urn string
+
+	if testUUID == "" {
+		urn = uuid.NewString()
+	} else {
+		urn = testUUID
+	}
+
 	return &Job{
-		urn:         uuid.NewString(),
+		urn:         urn,
 		redisClient: redisClient,
 	}
 }

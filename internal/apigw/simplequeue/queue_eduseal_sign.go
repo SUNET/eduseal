@@ -9,14 +9,14 @@ import (
 	"go.opentelemetry.io/otel/codes"
 )
 
-// EduSealSign is the ladok unsigned queue
+// EduSealSign is the EduSeal unsigned queue
 type EduSealSign struct {
 	service *Service
 	log     *logger.Log
 	*retask.Queue
 }
 
-// NewEduSealSign creates a new ladok unsigned queue
+// NewEduSealSign creates a new EduSeal unsigned queue
 func NewEduSealSign(ctx context.Context, service *Service, queueName string, log *logger.Log) (*EduSealSign, error) {
 	eduSealSign := &EduSealSign{
 		service: service,

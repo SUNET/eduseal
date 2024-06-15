@@ -2,11 +2,11 @@ package kvclient
 
 import (
 	"context"
+	"eduseal/pkg/helpers"
+	"eduseal/pkg/model"
 	"fmt"
 	"time"
-	"eduseal/pkg/helpers"
 
-	"github.com/masv3971/gosunetca/types"
 	"go.opentelemetry.io/otel/codes"
 )
 
@@ -25,7 +25,7 @@ func (d Doc) signedKey(transactionID string) string {
 }
 
 // SaveSigned saves the signed document and the timestamp when it was signed
-func (d *Doc) SaveSigned(ctx context.Context, doc *types.Document) error {
+func (d *Doc) SaveSigned(ctx context.Context, doc *model.Document) error {
 	ctx, span := d.client.tp.Start(ctx, "kv:SaveSigned")
 	defer span.End()
 
@@ -41,11 +41,11 @@ func (d *Doc) SaveSigned(ctx context.Context, doc *types.Document) error {
 }
 
 // GetSigned returns the signed document and the timestamp when it was signed
-func (d *Doc) GetSigned(ctx context.Context, transactionID string) (*types.Document, error) {
+func (d *Doc) GetSigned(ctx context.Context, transactionID string) (*model.Document, error) {
 	ctx, span := d.client.tp.Start(ctx, "kv:GetSigned")
 	defer span.End()
 
-	dest := &types.Document{}
+	dest := &model.Document{}
 	if err := d.client.RedisClient.HGetAll(ctx, d.signedKey(transactionID)).Scan(dest); err != nil {
 		span.SetStatus(codes.Error, err.Error())
 		return nil, err

@@ -14,7 +14,7 @@ import (
 )
 
 type envVars struct {
-	EduIDConfigYAML string `envconfig:"VC_CONFIG_YAML" required:"true"`
+	EduIDConfigYAML string `envconfig:"EDUSEAL_CONFIG_YAML" required:"true"`
 }
 
 // Parse parses config file from VC_CONFIG_YAML environment variable

@@ -1,6 +1,9 @@
 # github.com/KyleBanks/depth v1.2.1
 ## explicit
 github.com/KyleBanks/depth
+# github.com/MicahParks/keyfunc v1.9.0
+## explicit; go 1.16
+github.com/MicahParks/keyfunc
 # github.com/bytedance/sonic v1.11.6
 ## explicit; go 1.16
 github.com/bytedance/sonic
@@ -108,6 +111,9 @@ github.com/goccy/go-json/internal/encoder/vm_color_indent
 github.com/goccy/go-json/internal/encoder/vm_indent
 github.com/goccy/go-json/internal/errors
 github.com/goccy/go-json/internal/runtime
+# github.com/golang-jwt/jwt/v4 v4.4.2
+## explicit; go 1.16
+github.com/golang-jwt/jwt/v4
 # github.com/golang/snappy v0.0.4
 ## explicit
 github.com/golang/snappy
@@ -150,6 +156,9 @@ github.com/klauspost/cpuid/v2
 ## explicit; go 1.18
 github.com/leodido/go-urn
 github.com/leodido/go-urn/scim/schema
+# github.com/lithammer/shortuuid/v4 v4.0.0
+## explicit; go 1.13
+github.com/lithammer/shortuuid/v4
 # github.com/mailru/easyjson v0.7.7
 ## explicit; go 1.12
 github.com/mailru/easyjson/buffer
@@ -158,9 +167,6 @@ github.com/mailru/easyjson/jwriter
 # github.com/masv3971/goretask v0.0.0-20240112121936-7f1366ce1e15 => ../goretask
 ## explicit; go 1.21.1
 github.com/masv3971/goretask
-# github.com/masv3971/gosunetca v0.0.4 => ../gosunetca
-## explicit; go 1.19
-github.com/masv3971/gosunetca/types
 # github.com/mattn/go-isatty v0.0.20
 ## explicit; go 1.15
 github.com/mattn/go-isatty
@@ -519,7 +525,4 @@ gorm.io/gorm/clause
 gorm.io/gorm/logger
 gorm.io/gorm/schema
 gorm.io/gorm/utils
-# github.com/masv3971/goladok3 => ../goladok3
-# github.com/masv3971/gosunetca => ../gosunetca
-# github.com/masv3971/godc4eu => ../godc4eu
 # github.com/masv3971/goretask => ../goretask

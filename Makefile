@@ -2,7 +2,6 @@
 
 NAME 					:= eduseal
 LDFLAGS                 := -ldflags "-w -s --extldflags '-static'"
-LDFLAGS_DYNAMIC			:= -ldflags "-w -s"
 PYTHON					:= $(shell which python)
 PIPCOMPILE				:= pip-compile -v --upgrade --generate-hashes --allow-unsafe --index-url https://pypi.sunet.se/simple
 PIPSYNC					:= pip-sync --index-url https://pypi.sunet.se/simple --python-executable $(PYTHON)
@@ -49,50 +48,60 @@ VERSION := latest
 endif
 
 
-DOCKER_TAG_APIGW 		:= docker.sunet.se/eduseal/apigw:$(VERSION)
-DOCKER_TAG_CACHE 		:= docker.sunet.se/eduseal/cache:$(VERSION)
-DOCKER_TAG_PERSISTENT 	:= docker.sunet.se/eduseal/persistent:$(VERSION)
-DOCKER_TAG_GOBUILD 		:= docker.sunet.se/eduseal/gobuild:$(VERSION)
+DOCKER_TAG_APIGW 				:= docker.sunet.se/eduseal/apigw:$(VERSION)
+DOCKER_TAG_CACHE 				:= docker.sunet.se/eduseal/cache:$(VERSION)
+DOCKER_TAG_PERSISTENT 			:= docker.sunet.se/eduseal/persistent:$(VERSION)
+DOCKER_TAG_GOBUILD 				:= docker.sunet.se/eduseal/gobuild:$(VERSION)
+DOCKER_TAG_SEALER_USB			:= docker.sunet.se/eduseal/sealer_usb:$(VERSION)
+DOCKER_TAG_SEALER_SOFTHSM		:= docker.sunet.se/eduseal/sealer_softhsm:$(VERSION)
+DOCKER_TAG_SEALER_SOFTHSM_GRPC	:= docker.sunet.se/eduseal/sealer_softhsm_grpc:$(VERSION)
+DOCKER_TAG_VALIDATOR			:= docker.sunet.se/eduseal/validator:$(VERSION)
 
 
-build: proto build-cache build-persistent build-apigw
+#### Docker build
+docker-build-non-pkcs11-containers: docker-build-cache docker-build-persistent docker-build-apigw docker-build-validator
+docker-build-usb: docker-build-non-pkcs11-containers docker-build-sealer-usb
+docker-build-softhsm: docker-build-non-pkcs11-containers docker-build-sealer-softhsm
 
+docker-build-apigw:
+	$(info Docker building apigw with tag: $(VERSION))
+	docker build --build-arg SERVICE_NAME=apigw --build-arg VERSION=$(VERSION) --tag $(DOCKER_TAG_APIGW) --file docker/worker .
 
-build-cache:
-	$(info Building cache)
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -v -o ./bin/$(NAME)_cache ${LDFLAGS} ./cmd/cache/main.go
+docker-build-cache:
+	$(info Docker Building cache with tag: $(VERSION))
+	docker build --build-arg SERVICE_NAME=cache --tag $(DOCKER_TAG_CACHE) --file docker/worker .
 
-build-persistent:
-	$(info Building persistent)
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -v -o ./bin/$(NAME)_persistent ${LDFLAGS} ./cmd/persistent/main.go
+docker-build-persistent:
+	$(info Docker Building persistent with tag: $(VERSION))
+	docker build --build-arg SERVICE_NAME=persistent --tag $(DOCKER_TAG_PERSISTENT) --file docker/worker .
 
-build-apigw:
-	$(info Building apigw)
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -v -o ./bin/$(NAME)_apigw ${LDFLAGS} ./cmd/apigw/main.go
+docker-build-sealer-usb:
+	$(info building docker image $(DOCKER_TAG_SEALER_USB) )
+	docker build --tag $(DOCKER_TAG_SEALER_USB) --file docker/sealer_usb .
 
+docker-build-sealer-softhsm:
+	$(info building docker image $(DOCKER_TAG_SEALER_SOFTHSM) )
+	docker build --tag $(DOCKER_TAG_SEALER_SOFTHSM) --file docker/sealer_softhsm .
 
-docker-build: docker-build-cache docker-build-persistent docker-build-apigw
+docker-build-sealer-softhsm-grpc:
+	$(info building docker image $(DOCKER_TAG_SEALER_SOFTHSM_GRPC) )
+	docker build --tag $(DOCKER_TAG_SEALER_SOFTHSM_GRPC) --file docker/sealer/softhsm/grpc/Dockerfile .
+
+docker-build-validator:
+	$(info building docker image $(DOCKER_TAG_VALIDATOR) )
+	docker build --tag $(DOCKER_TAG_VALIDATOR) --file dockerfiles/validator .
 
 docker-build-gobuild:
 	$(info Docker Building gobuild with tag: $(VERSION))
 	docker build --tag $(DOCKER_TAG_GOBUILD) --file dockerfiles/gobuild .
 
-docker-build-cache:
-	$(info Docker Building cache with tag: $(VERSION))
-	docker build --build-arg SERVICE_NAME=cache --tag $(DOCKER_TAG_CACHE) --file dockerfiles/worker .
-
-docker-build-persistent:
-	$(info Docker Building persistent with tag: $(VERSION))
-	docker build --build-arg SERVICE_NAME=persistent --tag $(DOCKER_TAG_PERSISTENT) --file dockerfiles/worker .
-
-
-docker-build-apigw:
-	$(info Docker building apigw with tag: $(VERSION))
-	docker build --build-arg SERVICE_NAME=apigw --build-arg VERSION=$(VERSION) --tag $(DOCKER_TAG_APIGW) --file dockerfiles/worker .
-
-docker-push-gobuild:
+#### Docker push
+docker-push: docker-push-cache docker-push-persistent docker-push-apigw docker-push-sealer-usb docker-push-validator
 	$(info Pushing docker images)
-	docker push $(DOCKER_TAG_GOBUILD)
+
+docker-push-apigw:
+	$(info Pushing docker images)
+	docker push $(DOCKER_TAG_APIGW)
 
 docker-push-cache:
 	$(info Pushing docker images)
@@ -102,12 +111,18 @@ docker-push-persistent:
 	$(info Pushing docker images)
 	docker push $(DOCKER_TAG_PERSISTENT)
 
-docker-push-apigw:
-	$(info Pushing docker images)
-	docker push $(DOCKER_TAG_APIGW)
+docker-push-sealer-usb:
+	$(info Pushing docker image)
+	docker push $(DOCKER_TAG_SEALER_USB)
 
-docker-push: docker-push-cache docker-push-persistent docker-push-apigw
+docker-push-validator:
+	$(info Pushing docker image)
+	docker push $(DOCKER_TAG_VALIDATOR)
+
+docker-push-gobuild:
 	$(info Pushing docker images)
+	docker push $(DOCKER_TAG_GOBUILD)
+
 
 docker-tag-apigw:
 	$(info Tagging docker images)
@@ -156,11 +171,16 @@ clean_redis:
 ci_build: docker-build docker-push
 	$(info CI Build)
 
-proto: proto-status
-
+proto: proto-status proto-sealer
 
 proto-status:
 	protoc --proto_path=./proto/ --go-grpc_opt=module=eduseal --go_opt=module=eduseal --go_out=. --go-grpc_out=. ./proto/v1-status-model.proto 
+
+proto-sealer:
+	protoc --proto_path=./proto/ --go-grpc_opt=module=eduseal --go_opt=module=eduseal --go_out=. --go-grpc_out=. ./proto/v1-sealer.proto 
+
+proto-sealer-python:
+	python -m grpc_tools.protoc --proto_path=./proto/ --python_out=./src/eduseal/sealer --grpc_python_out=./src/eduseal/sealer ./proto/v1-sealer.proto
 
 swagger: swagger-apigw swagger-fmt
 

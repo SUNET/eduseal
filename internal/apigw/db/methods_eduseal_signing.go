@@ -2,10 +2,10 @@ package db
 
 import (
 	"context"
+	"eduseal/pkg/model"
 	"errors"
 	"time"
 
-	"github.com/masv3971/gosunetca/types"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.opentelemetry.io/otel/codes"
@@ -34,7 +34,7 @@ func (c *EduSealSigningColl) createIndex(ctx context.Context) error {
 }
 
 // Save saves one document
-func (c *EduSealSigningColl) Save(ctx context.Context, doc *types.Document) error {
+func (c *EduSealSigningColl) Save(ctx context.Context, doc *model.Document) error {
 	ctx, span := c.service.tp.Start(ctx, "db:doc:save")
 	defer span.End()
 
@@ -86,11 +86,11 @@ func (c *EduSealSigningColl) IsRevoked(ctx context.Context, transactionID string
 }
 
 // Get gets one document
-func (c *EduSealSigningColl) Get(ctx context.Context, transactionID string) (*types.Document, error) {
+func (c *EduSealSigningColl) Get(ctx context.Context, transactionID string) (*model.Document, error) {
 	ctx, span := c.service.tp.Start(ctx, "db:doc:get")
 	defer span.End()
 
-	reply := &types.Document{}
+	reply := &model.Document{}
 	filter := bson.M{
 		"transaction_id": bson.M{"$eq": transactionID},
 	}

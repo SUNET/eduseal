@@ -27,8 +27,8 @@ type Service struct {
 	log         *logger.Log
 	cfg         *model.Cfg
 
-	LadokAddSigned queue
-	LadokDelSigned queue
+	EduSealAddSigned queue
+	EduSealDelSigned queue
 }
 
 // New creates a new queue service
@@ -47,17 +47,17 @@ func New(ctx context.Context, kv *kvclient.Client, tracer *trace.Tracer, cfg *mo
 		return nil, err
 	}
 
-	service.LadokAddSigned, err = NewLadokAddSigned(ctx, service, cfg.Common.Queues.SimpleQueue.EduSealAddSigned.Name, service.log.New("LadokAddSigned"))
+	service.EduSealAddSigned, err = NewEduSealAddSigned(ctx, service, cfg.Common.Queues.SimpleQueue.EduSealAddSealed.Name, service.log.New("EduSealAddSigned"))
 	if err != nil {
 		return nil, err
 	}
-	service.LadokDelSigned, err = NewLadokDelSigned(ctx, service, cfg.Common.Queues.SimpleQueue.EduSealDelSigned.Name, service.log.New("LadokDelSigned"))
+	service.EduSealDelSigned, err = NewEduSealDelSigned(ctx, service, cfg.Common.Queues.SimpleQueue.EduSealDelSealed.Name, service.log.New("EduSealDelSigned"))
 	if err != nil {
 		return nil, err
 	}
 
-	go service.LadokAddSigned.Worker(ctx)
-	go service.LadokDelSigned.Worker(ctx)
+	go service.EduSealAddSigned.Worker(ctx)
+	go service.EduSealDelSigned.Worker(ctx)
 
 	return service, nil
 }

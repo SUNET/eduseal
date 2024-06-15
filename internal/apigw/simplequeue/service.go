@@ -25,10 +25,10 @@ type Service struct {
 	log         *logger.Log
 	cfg         *model.Cfg
 
-	LadokSign           queue
-	LadokValidate       queue
-	LadokDelSigned      queue
-	LadokPersistentSave queue
+	EduSealSign           queue
+	EduSealValidate       queue
+	EduSealDelSigned      queue
+	EduSealPersistentSave queue
 }
 
 // New creates a new queue service
@@ -45,22 +45,22 @@ func New(ctx context.Context, kv *kvclient.Client, tracer *trace.Tracer, cfg *mo
 		return nil, err
 	}
 
-	service.LadokSign, err = NewEduSealSign(ctx, service, cfg.Common.Queues.SimpleQueue.EduSealSign.Name, service.log.New("LadokSign"))
+	service.EduSealSign, err = NewEduSealSign(ctx, service, cfg.Common.Queues.SimpleQueue.EduSealSeal.Name, service.log.New("EduSealSign"))
 	if err != nil {
 		return nil, err
 	}
 
-	service.LadokValidate, err = NewEduSealValidate(ctx, service, cfg.Common.Queues.SimpleQueue.EduSealValidate.Name, service.log.New("LadokValidate"))
+	service.EduSealValidate, err = NewEduSealValidate(ctx, service, cfg.Common.Queues.SimpleQueue.EduSealValidate.Name, service.log.New("EduSealValidate"))
 	if err != nil {
 		return nil, err
 	}
 
-	service.LadokDelSigned, err = NewEduSealDelSigned(ctx, service, cfg.Common.Queues.SimpleQueue.EduSealDelSigned.Name, service.log.New("LadokDelSigned"))
+	service.EduSealDelSigned, err = NewEduSealDelSigned(ctx, service, cfg.Common.Queues.SimpleQueue.EduSealDelSealed.Name, service.log.New("EduSealDelSigned"))
 	if err != nil {
 		return nil, err
 	}
 
-	service.LadokPersistentSave, err = NewEduSealPersistentSave(ctx, service, cfg.Common.Queues.SimpleQueue.EduSealPersistentSave.Name, service.log.New("LadokPersistentSave"))
+	service.EduSealPersistentSave, err = NewEduSealPersistentSave(ctx, service, cfg.Common.Queues.SimpleQueue.EduSealPersistentSave.Name, service.log.New("EduSealPersistentSave"))
 	if err != nil {
 		return nil, err
 	}

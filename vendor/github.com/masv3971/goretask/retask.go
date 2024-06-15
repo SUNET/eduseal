@@ -5,13 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
-
-func newURN() string {
-	return uuid.NewString()
-}
 
 // Task is a serialized representation of a task in the queue
 type Task struct {
@@ -24,19 +19,13 @@ type Task struct {
 type Client struct {
 	redisClient *redis.Client
 	queueName   string
-	uuidFunc    func() string
 	currentURN  string
-}
-
-func (c *Client) setNewURN() {
-	c.currentURN = c.uuidFunc()
 }
 
 // New creates a new client for interacting with the queue
 func New(ctx context.Context, redisClient *redis.Client) (*Client, error) {
 	client := &Client{
 		redisClient: redisClient,
-		uuidFunc:    newURN,
 	}
 
 	return client, nil

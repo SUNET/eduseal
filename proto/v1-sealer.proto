@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package v1.sealer;
+
+option go_package = "eduseal/internal/gen/sealer/apiv1.sealer";
+
+//import "google/protobuf/timestamp.proto";
+//import "google/protobuf/any.proto";
+
+// Sealer seals documents
+service Sealer {
+    rpc Seal (SealRequest) returns (SealReply) {}
+}
+
+message SealRequest {
+    string transaction_id = 1;
+    string pdf = 2;
+}
+
+message SealReply {
+    string transaction_id = 1;
+    string pdf = 2;
+    string error = 3;
+    int64 create_ts = 4;
+}

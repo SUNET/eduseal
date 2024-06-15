@@ -20,8 +20,6 @@ type service interface {
 	Close(ctx context.Context) error
 }
 
-var GitCommit string
-
 func main() {
 	var wg sync.WaitGroup
 	ctx := context.Background()

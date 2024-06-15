@@ -11,7 +11,9 @@ func (c *Client) Health(ctx context.Context, req *apiv1_status.StatusRequest) (*
 	c.log.Info("health handler")
 	probes := model.Probes{}
 	probes = append(probes, c.kv.Status(ctx))
-	probes = append(probes, c.db.Status(ctx))
+	if !c.cfg.Common.Mongo.Disable {
+		probes = append(probes, c.db.Status(ctx))
+	}
 
 	status := probes.Check("apigw")
 

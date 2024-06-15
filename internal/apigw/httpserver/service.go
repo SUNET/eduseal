@@ -32,10 +32,10 @@ type Service struct {
 }
 
 // New creates a new httpserver service
-func New(ctx context.Context, config *model.Cfg, api *apiv1.Client, tp *trace.Tracer, logger *logger.Log) (*Service, error) {
+func New(ctx context.Context, config *model.Cfg, api *apiv1.Client, tp *trace.Tracer, log *logger.Log) (*Service, error) {
 	s := &Service{
 		config: config,
-		logger: logger,
+		logger: log,
 		apiv1:  api,
 		tp:     tp,
 		server: &http.Server{
@@ -66,7 +66,7 @@ func New(ctx context.Context, config *model.Cfg, api *apiv1.Client, tp *trace.Tr
 	s.server.IdleTimeout = 90 * time.Second
 
 	// Middlewares
-	s.gin.Use(s.middlewareTraceID(ctx))
+	s.gin.Use(s.middlewareRequestID(ctx))
 	s.gin.Use(s.middlewareDuration(ctx))
 	s.gin.Use(s.middlewareLogger(ctx))
 	s.gin.Use(s.middlewareCrash(ctx))
@@ -84,16 +84,19 @@ func New(ctx context.Context, config *model.Cfg, api *apiv1.Client, tp *trace.Tr
 
 	rgAPIv1 := rgRoot.Group("api/v1")
 
-	rgEduSealV1 := rgAPIv1.Group("/ladok/pdf", s.middlewareClientCertAuth(ctx))
-	rgEduSealV1.Use(s.middlewareAuthLog(ctx))
-	s.regEndpoint(ctx, rgEduSealV1, http.MethodPost, "/sign", s.endpointSignPDF)
-	s.regEndpoint(ctx, rgEduSealV1, http.MethodPost, "/validate", s.endpointValidatePDF)
-	s.regEndpoint(ctx, rgEduSealV1, http.MethodGet, "/:transaction_id", s.endpointGetSignedPDF)
-	s.regEndpoint(ctx, rgEduSealV1, http.MethodPut, "/revoke/:transaction_id", s.endpointPDFRevoke)
+	rgPDF := rgAPIv1.Group("/pdf")
+	rgPDF.Use(s.middlewareJWTAuth(ctx))
+	s.regEndpoint(ctx, rgPDF, http.MethodPost, "/sign", s.endpointSignPDF)
+	s.regEndpoint(ctx, rgPDF, http.MethodPost, "/validate", s.endpointValidatePDF)
+	s.regEndpoint(ctx, rgPDF, http.MethodGet, "/:transaction_id", s.endpointGetSignedPDF)
+	s.regEndpoint(ctx, rgPDF, http.MethodPut, "/revoke/:transaction_id", s.endpointPDFRevoke)
 
 	// Run http server
 	go func() {
+		s.logger.Info("ListenAndServe", "addr", s.config.APIGW.APIServer.Addr)
+		s.logger.Info("TLS enabled", "enabled", s.config.APIGW.APIServer.TLS.Enabled)
 		if s.config.APIGW.APIServer.TLS.Enabled {
+			s.logger.Info("TLS enabled")
 			s.applyTLSConfig(ctx)
 
 			err := s.server.ListenAndServeTLS(s.config.APIGW.APIServer.TLS.CertFilePath, s.config.APIGW.APIServer.TLS.KeyFilePath)
@@ -102,6 +105,7 @@ func New(ctx context.Context, config *model.Cfg, api *apiv1.Client, tp *trace.Tr
 			}
 		} else {
 			err = s.server.ListenAndServe()
+			s.logger.Info("TLS disabled")
 			if err != nil {
 				s.logger.Error(err, "listen_and_server")
 			}
@@ -113,7 +117,7 @@ func New(ctx context.Context, config *model.Cfg, api *apiv1.Client, tp *trace.Tr
 	return s, nil
 }
 
-func (s *Service) regEndpoint(ctx context.Context, rg *gin.RouterGroup, method, path string, handler func(context.Context, *gin.Context) (interface{}, error)) {
+func (s *Service) regEndpoint(ctx context.Context, rg *gin.RouterGroup, method, path string, handler func(context.Context, *gin.Context) (any, error)) {
 	rg.Handle(method, path, func(c *gin.Context) {
 		res, err := handler(ctx, c)
 		if err != nil {
@@ -125,7 +129,7 @@ func (s *Service) regEndpoint(ctx context.Context, rg *gin.RouterGroup, method, 
 	})
 }
 
-func renderContent(c *gin.Context, code int, data interface{}) {
+func renderContent(c *gin.Context, code int, data any) {
 	switch c.NegotiateFormat(gin.MIMEJSON, "*/*") {
 	case gin.MIMEJSON:
 		c.JSON(code, data)

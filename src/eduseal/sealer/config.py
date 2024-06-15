@@ -11,13 +11,31 @@ class RedisConfig(BaseModel):
     db: int
     password: Optional[str] = None
 
+class PdfSignatureMetadata(BaseModel):
+    location: str
+    reason: str
+    name: str
+    contact_info: str
+    field_name: str
+
+class PKCS11(BaseModel):
+    label: str
+    pin: str
+    module: str
+    key_label: Optional[str] = None
+    cert_label: Optional[str] = None
+    slot: Optional[int] = None
+
+
 class CFG(BaseModel):
-    validate_queue_name: str
-    trust_root_folder: str
+    seal_queue_name: str
+    add_sealed_queue_name: str
+    pkcs11: PKCS11
     redis: RedisConfig
+    metadata: PdfSignatureMetadata
 
 def parse(log: Logger) -> CFG:
-    file_name = os.getenv("CONFIG_YAML")
+    file_name = os.getenv("EDUSEAL_CONFIG_YAML")
     if file_name is None:
         log.error("no config file env variable found")
         sys.exit(1)
@@ -25,7 +43,7 @@ def parse(log: Logger) -> CFG:
     try:
         with open(file_name, "r")as f:
              data = yaml.load(f, yaml.FullLoader)
-             cfg = CFG.model_validate(data["py_pdfvalidator"])
+             cfg = CFG.model_validate(data["sealer"])
     except Exception as e:
             log.error(f"open file {file_name} failed, error: {e}")
             sys.exit(1)

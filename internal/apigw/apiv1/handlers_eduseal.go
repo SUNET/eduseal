@@ -3,14 +3,17 @@ package apiv1
 import (
 	"context"
 	"eduseal/pkg/helpers"
+	"eduseal/pkg/model"
 	"encoding/json"
 	"errors"
 	"time"
 
-	"go.opentelemetry.io/otel/codes"
-
 	"github.com/google/uuid"
-	"github.com/masv3971/gosunetca/types"
+	"go.opentelemetry.io/otel/codes"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+
+	apiv1_sealer "eduseal/internal/gen/sealer/apiv1.sealer"
 )
 
 // PDFSignRequest is the request for sign pdf
@@ -20,23 +23,21 @@ type PDFSignRequest struct {
 
 // PDFSignReply is the reply for sign pdf
 type PDFSignReply struct {
-	Data struct {
-		TransactionID string `json:"transaction_id" validate:"required"`
-	} `json:"data"`
+	Data *apiv1_sealer.SealReply `json:"data"`
 }
 
 // PDFSign is the request to sign pdf
 //
 //	@Summary		Sign pdf
-//	@ID				ladok-pdf-sign
+//	@ID				pdf-sign
 //	@Description	sign base64 encoded PDF
-//	@Tags			ladok
+//	@Tags			eduseal
 //	@Accept			json
 //	@Produce		json
 //	@Success		200	{object}	PDFSignReply			"Success"
 //	@Failure		400	{object}	helpers.ErrorResponse	"Bad Request"
 //	@Param			req	body		PDFSignRequest			true	" "
-//	@Router			/ladok/pdf/sign [post]
+//	@Router			/pdf/sign [post]
 func (c *Client) PDFSign(ctx context.Context, req *PDFSignRequest) (*PDFSignReply, error) {
 	ctx, span := c.tp.Start(ctx, "apiv1:PDFSign")
 	defer span.End()
@@ -46,36 +47,31 @@ func (c *Client) PDFSign(ctx context.Context, req *PDFSignRequest) (*PDFSignRepl
 		span.SetStatus(codes.Error, err.Error())
 		return nil, err
 	}
-	transactionID := uuid.New().String()
+	transactionID := uuid.NewString()
 
 	c.log.Debug("PDFSign", "transaction_id", transactionID)
 
-	unsignedDocument := &types.Document{
-		TransactionID: transactionID,
-		Base64Data:    req.PDF,
-	}
-
-	_, err := c.simpleQueue.LadokSign.Enqueue(ctx, unsignedDocument)
+	conn, err := grpc.NewClient(
+		"172.20.50.14:50051",
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
 	if err != nil {
-		span.SetStatus(codes.Error, err.Error())
+		c.log.Error(err, "Failed to connect to sealer")
 		return nil, err
 	}
+	defer conn.Close()
+	grpcClient := apiv1_sealer.NewSealerClient(conn)
 
-	persistentDocument := &types.Document{
-		TransactionID: transactionID,
-	}
-	_, err = c.simpleQueue.LadokPersistentSave.Enqueue(ctx, persistentDocument)
+	signedDoc, err := grpcClient.Seal(ctx, &apiv1_sealer.SealRequest{
+		TransactionId: transactionID,
+		Pdf:           req.PDF,
+	})
 	if err != nil {
-		span.SetStatus(codes.Error, err.Error())
 		return nil, err
 	}
 
 	reply := &PDFSignReply{
-		Data: struct {
-			TransactionID string `json:"transaction_id" validate:"required"`
-		}{
-			TransactionID: transactionID,
-		},
+		Data: signedDoc,
 	}
 
 	return reply, nil
@@ -88,30 +84,30 @@ type PDFValidateRequest struct {
 
 // PDFValidateReply is the reply for verify pdf
 type PDFValidateReply struct {
-	Data *types.Validation `json:"data"`
+	Data *model.Validation `json:"data"`
 }
 
 // PDFValidate is the handler for verify pdf
 //
 //	@Summary		Validate pdf
-//	@ID				ladok-pdf-validate
+//	@ID				pdf-validate
 //	@Description	validate a signed base64 encoded PDF
-//	@Tags			ladok
+//	@Tags			eduseal
 //	@Accept			json
 //	@Produce		json
 //	@Success		200	{object}	PDFValidateReply		"Success"
 //	@Failure		400	{object}	helpers.ErrorResponse	"Bad Request"
 //	@Param			req	body		PDFValidateRequest		true	" "
-//	@Router			/ladok/pdf/validate [post]
+//	@Router			/pdf/validate [post]
 func (c *Client) PDFValidate(ctx context.Context, req *PDFValidateRequest) (*PDFValidateReply, error) {
 	ctx, span := c.tp.Start(ctx, "apiv1:PDFValidate")
 	defer span.End()
 
-	validateCandidate := &types.Document{
+	validateCandidate := &model.Document{
 		Base64Data: req.PDF,
 	}
 
-	job, err := c.simpleQueue.LadokValidate.Enqueue(ctx, validateCandidate)
+	job, err := c.simpleQueue.EduSealValidate.Enqueue(ctx, validateCandidate)
 	if err != nil {
 		span.SetStatus(codes.Error, err.Error())
 		return nil, err
@@ -144,13 +140,13 @@ func (c *Client) PDFValidate(ctx context.Context, req *PDFValidateRequest) (*PDF
 		case got := <-gotChan:
 			if got {
 				c.log.Info("PDFValidate", "job.Result", job.Result)
-				validationReply := &types.Validation{}
+				validationReply := &model.Validation{}
 				if err := json.Unmarshal([]byte(job.Result.Data), validationReply); err != nil {
 					span.SetStatus(codes.Error, err.Error())
 					return nil, err
 				}
 				if validationReply.Error != "" {
-					span.SetStatus(codes.Error, err.Error())
+					span.SetStatus(codes.Error, validationReply.Error)
 					return nil, helpers.NewErrorFromError(errors.New(validationReply.Error))
 				}
 
@@ -176,7 +172,7 @@ type PDFGetSignedRequest struct {
 // PDFGetSignedReply is the reply for the signed pdf
 type PDFGetSignedReply struct {
 	Data struct {
-		Document *types.Document `json:"document,omitempty"`
+		Document *model.Document `json:"document,omitempty"`
 		Message  string          `json:"message,omitempty"`
 	} `json:"data"`
 }
@@ -200,7 +196,7 @@ func (c *Client) PDFGetSigned(ctx context.Context, req *PDFGetSignedRequest) (*P
 	if !c.kv.Doc.ExistsSigned(ctx, req.TransactionID) {
 		return &PDFGetSignedReply{
 			Data: struct {
-				Document *types.Document `json:"document,omitempty"`
+				Document *model.Document `json:"document,omitempty"`
 				Message  string          `json:"message,omitempty"`
 			}{
 				Message: "Document does not exist, please try again later",
@@ -208,9 +204,11 @@ func (c *Client) PDFGetSigned(ctx context.Context, req *PDFGetSignedRequest) (*P
 		}, nil
 	}
 
-	if c.db.EduSealSigningColl.IsRevoked(ctx, req.TransactionID) {
-		span.SetStatus(codes.Error, helpers.ErrDocumentIsRevoked.Error())
-		return nil, helpers.ErrDocumentIsRevoked
+	if !c.cfg.Common.Mongo.Disable {
+		if c.db.EduSealSigningColl.IsRevoked(ctx, req.TransactionID) {
+			span.SetStatus(codes.Error, helpers.ErrDocumentIsRevoked.Error())
+			return nil, helpers.ErrDocumentIsRevoked
+		}
 	}
 
 	signedDoc, err := c.kv.Doc.GetSigned(ctx, req.TransactionID)
@@ -219,11 +217,11 @@ func (c *Client) PDFGetSigned(ctx context.Context, req *PDFGetSignedRequest) (*P
 		return nil, err
 	}
 
-	delReq := &types.Document{
+	delReq := &model.Document{
 		TransactionID: req.TransactionID,
 	}
 
-	if _, err := c.simpleQueue.LadokDelSigned.Enqueue(ctx, delReq); err != nil {
+	if _, err := c.simpleQueue.EduSealDelSigned.Enqueue(ctx, delReq); err != nil {
 		c.log.Info("PDFGetSigned", "Enqueue", err)
 		span.SetStatus(codes.Error, err.Error())
 		return nil, err
@@ -232,7 +230,7 @@ func (c *Client) PDFGetSigned(ctx context.Context, req *PDFGetSignedRequest) (*P
 	if signedDoc.Error != "" {
 		resp := &PDFGetSignedReply{
 			Data: struct {
-				Document *types.Document `json:"document,omitempty"`
+				Document *model.Document `json:"document,omitempty"`
 				Message  string          `json:"message,omitempty"`
 			}{
 				Message: signedDoc.Error,
@@ -243,7 +241,7 @@ func (c *Client) PDFGetSigned(ctx context.Context, req *PDFGetSignedRequest) (*P
 
 	return &PDFGetSignedReply{
 		Data: struct {
-			Document *types.Document `json:"document,omitempty"`
+			Document *model.Document `json:"document,omitempty"`
 			Message  string          `json:"message,omitempty"`
 		}{
 			Document: signedDoc,
@@ -279,9 +277,21 @@ func (c *Client) PDFRevoke(ctx context.Context, req *PDFRevokeRequest) (*PDFRevo
 	ctx, span := c.tp.Start(ctx, "apiv1:PDFRevoke")
 	defer span.End()
 
+	if c.cfg.Common.Mongo.Disable {
+		reply := &PDFRevokeReply{
+			Data: struct {
+				Status bool `json:"status"`
+			}{
+				Status: false,
+			},
+		}
+		return reply, nil
+	}
+
 	if err := c.db.EduSealSigningColl.Revoke(ctx, req.TransactionID); err != nil {
 		return nil, err
 	}
+
 	reply := &PDFRevokeReply{
 		Data: struct {
 			Status bool `json:"status"`

@@ -27,6 +27,7 @@ func (s *Service) endpointSignPDF(ctx context.Context, c *gin.Context) (interfac
 	ctx, span := s.tp.Start(ctx, "httpserver:endpointSignPDF")
 	defer span.End()
 
+
 	request := &apiv1.PDFSignRequest{}
 	if err := s.bindV2(ctx, c, request); err != nil {
 		span.SetStatus(codes.Error, err.Error())

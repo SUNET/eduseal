@@ -3,37 +3,37 @@ package simplequeue
 import (
 	"context"
 	"eduseal/pkg/logger"
+	"eduseal/pkg/model"
 	"encoding/json"
 
 	retask "github.com/masv3971/goretask"
-	"github.com/masv3971/gosunetca/types"
 	"go.opentelemetry.io/otel/codes"
 )
 
-// LadokAddSigned is the ladok unsigned queue
-type LadokAddSigned struct {
+// EduSealAddSigned is the ladok unsigned queue
+type EduSealAddSigned struct {
 	service *Service
 	log     *logger.Log
 	*retask.Queue
 }
 
-// NewLadokAddSigned creates a new ladok unsigned queue
-func NewLadokAddSigned(ctx context.Context, service *Service, queueName string, log *logger.Log) (*LadokAddSigned, error) {
-	ladokAddSigned := &LadokAddSigned{
+// NewEduSealAddSigned creates a new EduSeal unsigned queue
+func NewEduSealAddSigned(ctx context.Context, service *Service, queueName string, log *logger.Log) (*EduSealAddSigned, error) {
+	eduSealAddSigned := &EduSealAddSigned{
 		service: service,
 		log:     log,
 	}
 
-	ladokAddSigned.Queue = ladokAddSigned.service.queueClient.NewQueue(ctx, queueName)
+	eduSealAddSigned.Queue = eduSealAddSigned.service.queueClient.NewQueue(ctx, queueName)
 
-	ladokAddSigned.log.Info("Started")
+	eduSealAddSigned.log.Info("Started")
 
-	return ladokAddSigned, nil
+	return eduSealAddSigned, nil
 }
 
 // Enqueue publishes a document to the queue
-func (s *LadokAddSigned) Enqueue(ctx context.Context, message any) (*retask.Job, error) {
-	ctx, span := s.service.tp.Start(ctx, "simplequeue:LadokAddSigned:Enqueue")
+func (s *EduSealAddSigned) Enqueue(ctx context.Context, message any) (*retask.Job, error) {
+	ctx, span := s.service.tp.Start(ctx, "simplequeue:EduSealAddSigned:Enqueue")
 	defer span.End()
 
 	s.log.Debug("Enqueue add signed pdf")
@@ -48,15 +48,15 @@ func (s *LadokAddSigned) Enqueue(ctx context.Context, message any) (*retask.Job,
 }
 
 // Dequeue dequeues a document from the queue
-func (s *LadokAddSigned) Dequeue(ctx context.Context) error {
-	ctx, span := s.service.tp.Start(ctx, "simplequeue:LadokAddSigned:Dequeue")
+func (s *EduSealAddSigned) Dequeue(ctx context.Context) error {
+	ctx, span := s.service.tp.Start(ctx, "simplequeue:EduSealAddSigned:Dequeue")
 	defer span.End()
 	return nil
 }
 
 // Wait waits for the next message
-func (s *LadokAddSigned) Wait(ctx context.Context) (*retask.Task, error) {
-	ctx, span := s.service.tp.Start(ctx, "simplequeue:LadokAddSigned:Wait")
+func (s *EduSealAddSigned) Wait(ctx context.Context) (*retask.Task, error) {
+	ctx, span := s.service.tp.Start(ctx, "simplequeue:EduSealAddSigned:Wait")
 	defer span.End()
 
 	task, err := s.Queue.Wait(ctx)
@@ -69,8 +69,8 @@ func (s *LadokAddSigned) Wait(ctx context.Context) (*retask.Task, error) {
 }
 
 // Worker is the worker
-func (s *LadokAddSigned) Worker(ctx context.Context) error {
-	ctx, span := s.service.tp.Start(ctx, "simplequeue:LadokAddSigned:Worker")
+func (s *EduSealAddSigned) Worker(ctx context.Context) error {
+	ctx, span := s.service.tp.Start(ctx, "simplequeue:EduSealAddSigned:Worker")
 	defer span.End()
 
 	var (
@@ -95,7 +95,7 @@ func (s *LadokAddSigned) Worker(ctx context.Context) error {
 			return err
 		case task := <-taskChan:
 			s.log.Info("Got task", "task", task.Data)
-			document := &types.Document{}
+			document := &model.Document{}
 			if err := json.Unmarshal([]byte(task.Data), document); err != nil {
 				span.SetStatus(codes.Error, err.Error())
 				s.log.Error(err, "Unmarshal failed")

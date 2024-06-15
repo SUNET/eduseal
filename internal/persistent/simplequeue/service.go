@@ -30,9 +30,6 @@ type Service struct {
 	cfg         *model.Cfg
 
 	EduSealPersistentSave queue
-	VCPersistentSave      queue
-	VCPersistentDelete    queue
-	VCPersistentReplace   queue
 }
 
 // New creates a new queue service

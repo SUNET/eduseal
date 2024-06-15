@@ -4,7 +4,6 @@ import logging
 from io import BytesIO
 import base64
 import json
-from retask import Task
 
 
 from pkcs11 import Session, UserAlreadyLoggedIn
@@ -16,13 +15,12 @@ from pyhanko.sign.pkcs11 import PKCS11Signer
 from pyhanko.sign.signers.pdf_signer import PdfSigner
 from pyhanko.pdf_utils.crypt.api import PdfKeyNotAvailableError
 from pyhanko.pdf_utils.misc import PdfReadError
-from kafka import KafkaConsumer, KafkaProducer
 
 from eduseal.models import PDFSignRequest, PDFSignReply
-from eduseal.signer.config import parse, CFG
+from eduseal.sealer.config import parse, CFG
 
-class SigningQueue:
-    def __init__(self, service_name: str = "py_pdfsigner"):
+class Sealer:
+    def __init__(self, service_name: str):
         self.service_name = service_name
         self.logger = logging.getLogger(self.service_name)
         self.logger.setLevel(logging.DEBUG)
@@ -35,18 +33,12 @@ class SigningQueue:
         ch.setFormatter(formatter)
 
         self.logger.addHandler(ch)
+        #self.logger.propagate = False
 
         self.config: CFG = parse(log=self.logger)
 
         self.pkc11_session: Session
         self.init_pkcs11_session()
-
-
-        self.sign_queue = Queue(self.config.sign_queue_name, config=self.config.redis)
-        self.sign_queue.connect()
-
-        self.add_signed_queue = Queue(self.config.add_signed_queue_name, config=self.config.redis)
-        self.add_signed_queue.connect()
 
     def init_pkcs11_session(self) -> None:
         self.logger.info("init pkcs11 session")
@@ -66,34 +58,54 @@ class SigningQueue:
     def unmarshal(self, data: dict) -> PDFSignRequest:
         return PDFSignRequest.model_validate(data)
 
-    def sign(self, in_data: PDFSignRequest)-> PDFSignReply:
+    def seal(self, in_data: PDFSignRequest)-> PDFSignReply:
+        self.logger.debug("start sealing")
+       # self.logger.debug(f"transaction_id: {in_data.transaction_id}")
+       # self.logger.debug(f"base64_data: {in_data.base64_data}")
+
         try:
             pdf_writer = IncrementalPdfFileWriter(input_stream=BytesIO(base64.urlsafe_b64decode(in_data.base64_data)), strict=False)
         except PdfReadError as _e:
+            self.logger.debug(f"input pdf is not valid, err: {_e}")
             return PDFSignReply(
                 transaction_id=in_data.transaction_id,
                 base64_data=None,
                 create_ts=int(time.time()),
-                error=f"py_pdfsigner: input pdf is not valid, err: {_e}",
+                error=f"input pdf is not valid, err: {_e}",
             )
 
         pdf_writer.document_meta.keywords = [f"transaction_id:{in_data.transaction_id}"]
+        self.logger.debug("add meta data to pdf")
 
-        pkcs11_signer = PKCS11Signer(
-            pkcs11_session=self.pkc11_session,
-            cert_label=self.config.pkcs11.cert_label,
-            key_label=self.config.pkcs11.key_label,
-            use_raw_mechanism=True,
-        )
+        try:
+            pkcs11_signer = PKCS11Signer(
+                pkcs11_session=self.pkc11_session,
+                cert_label=self.config.pkcs11.cert_label,
+                key_label=self.config.pkcs11.key_label,
+                use_raw_mechanism=True,
+            )
+        except Exception as _e:
+            self.logger.debug(f"pkcs11 signer creation failed, err: {_e}")
+            return PDFSignReply(
+                transaction_id=in_data.transaction_id,
+                base64_data=None,
+                create_ts=int(time.time()),
+                error=f"pkcs11 signer creation failed, err: {_e}",
+            )
+        self.logger.debug("pkcs11 signer created")
 
-        signature_meta = signers.PdfSignatureMetadata(
-            field_name="Signature1",
-            location=self.config.metadata.location,
-            reason=self.config.metadata.reason,
-            name=self.config.metadata.name,
-            contact_info=self.config.metadata.contact_info,
-            subfilter=SigSeedSubFilter.ADOBE_PKCS7_DETACHED
-        )
+        try:
+            signature_meta = signers.PdfSignatureMetadata(
+                field_name="Signature1",
+                location=self.config.metadata.location,
+                reason=self.config.metadata.reason,
+                name=self.config.metadata.name,
+                contact_info=self.config.metadata.contact_info,
+                subfilter=SigSeedSubFilter.ADOBE_PKCS7_DETACHED
+            )
+        except Exception as _e:
+            self.logger.debug(f"signature meta creation failed, err: {_e}")
+        self.logger.debug("signature meta created")
 
         signer = PdfSigner(
             signature_meta=signature_meta,
@@ -109,7 +121,7 @@ class SigningQueue:
             )
 
         except PdfKeyNotAvailableError as _e:
-            err_msg = f"py_pdfsigner: input pdf is encrypted, err: {_e}"
+            err_msg = f"input pdf is encrypted, err: {_e}"
             self.logger.error("error: " + err_msg)
 
             return PDFSignReply(
@@ -124,6 +136,8 @@ class SigningQueue:
         signed_pdf.close()
 
         self.logger.info("signing done")
+        self.logger.debug(f"transaction_id: {in_data.transaction_id}")
+        self.logger.debug(f"base64_data: {base64_encoded}")
     
         return PDFSignReply(
             transaction_id=in_data.transaction_id,
@@ -131,19 +145,3 @@ class SigningQueue:
             create_ts=int(time.time()),
             error="",
         )
-    
-
-if __name__ == "__main__":
-    sq = SigningQueue()
-
-    while True:
-        sign_task = sq.sign_queue.wait()
-        sign_data = sq.unmarshal(sign_task.data)
-        sq.logger.info("Received signing task urn: %s transaction_id: %s", sign_task.urn, sign_data.transaction_id)
-        signedPDF = sq.sign(in_data=sign_data)
-        sq.logger.info("signedpdf: %s", signedPDF)
-
-        s =  signedPDF.model_dump()
-        add_signed_task = Task(data=signedPDF.model_dump())
-        
-        sq.add_signed_queue.enqueue(task=add_signed_task)
