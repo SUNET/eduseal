@@ -4,8 +4,6 @@
 #
 #    pip-compile --allow-unsafe --generate-hashes --index-url=https://pypi.sunet.se/simple requirements.in
 #
---index-url https://pypi.sunet.se/simple
-
 asn1crypto==1.5.1 \
     --hash=sha256:13ae38502be632115abf8a24cbe5f4da52e3b5231990aff31123c805306ccb9c \
     --hash=sha256:db4e40728b728508912cbb3d44f19ce188f218e9eba635821bb4b68564f8fd67
@@ -17,9 +15,7 @@ asn1crypto==1.5.1 \
 async-timeout==4.0.3 \
     --hash=sha256:4640d96be84d82d02ed59ea2b7105a0f7b33abe8703703cd0ab0bf87c427522f \
     --hash=sha256:7405140ff1230c310e51dc27b3145b9092d659ce68ff733fb0cefe3ee42be028
-    # via
-    #   asyncpg
-    #   redis
+    # via asyncpg
 asyncpg==0.29.0 \
     --hash=sha256:0009a300cae37b8c525e5b449233d59cd9868fd35431abc470a3e364d2b85cb9 \
     --hash=sha256:000c996c53c04770798053e1730d34e30cb645ad95a63265aec82da9093d88e7 \
@@ -526,9 +522,9 @@ uritools==4.0.2 \
     --hash=sha256:04df2b787d0eb76200e8319382a03562fbfe4741fd66c15506b08d3b8211d573 \
     --hash=sha256:607b15eae1e7b69a120f463a7d98f91a56671e1ab92aae13f8e1f25c017fe60e
     # via pyhanko-certvalidator
-urllib3==2.2.1 \
-    --hash=sha256:450b20ec296a467077128bff42b73080516e71b56ff59a60a02bef2232c4fa9d \
-    --hash=sha256:d0570876c61ab9e520d776c38acbbb5b05a776d3f9ff98a5c8fd5162a444cf19
+urllib3==2.2.2 \
+    --hash=sha256:a448b2f64d686155468037e1ace9f2d2199776e17f0a46610480d311f73e3472 \
+    --hash=sha256:dd505485549a7a552833da5e6063639d0d177c04f23bc3864e41e5dc5f612168
     # via requests
 zipp==3.18.1 \
     --hash=sha256:206f5a15f2af3dbaee80769fb7dc6f249695e940acca08dfb2a4769fe61e538b \
