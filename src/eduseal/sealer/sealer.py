@@ -2,8 +2,8 @@
 import time
 import logging
 from io import BytesIO
+import os
 import base64
-import json
 
 
 from pkcs11 import Session, UserAlreadyLoggedIn
@@ -16,12 +16,13 @@ from pyhanko.sign.signers.pdf_signer import PdfSigner
 from pyhanko.pdf_utils.crypt.api import PdfKeyNotAvailableError
 from pyhanko.pdf_utils.misc import PdfReadError
 
-from eduseal.models import PDFSignRequest, PDFSignReply
 from eduseal.sealer.config import parse, CFG
 
+from eduseal.sealer.v1_sealer_pb2 import SealRequest, SealReply
+
 class Sealer:
-    def __init__(self, service_name: str):
-        self.service_name = service_name
+    def __init__(self):
+        self.service_name = os.getenv("EDUSEAL_SERVICE_NAME", "eduseal_sealer")
         self.logger = logging.getLogger(self.service_name)
         self.logger.setLevel(logging.DEBUG)
         
@@ -33,7 +34,6 @@ class Sealer:
         ch.setFormatter(formatter)
 
         self.logger.addHandler(ch)
-        #self.logger.propagate = False
 
         self.config: CFG = parse(log=self.logger)
 
@@ -52,26 +52,20 @@ class Sealer:
         except UserAlreadyLoggedIn:
             self.logger.info("pkcs11 user already logged in!")
 
-    def marshal(self, data: PDFSignRequest) -> str:
-        return json.dumps(data)
-
-    def unmarshal(self, data: dict) -> PDFSignRequest:
-        return PDFSignRequest.model_validate(data)
-
-    def seal(self, in_data: PDFSignRequest)-> PDFSignReply:
+    def seal(self, in_data: SealRequest)-> SealReply:
         self.logger.debug("start sealing")
-       # self.logger.debug(f"transaction_id: {in_data.transaction_id}")
-       # self.logger.debug(f"base64_data: {in_data.base64_data}")
+        self.logger.debug(f"transaction_id: {in_data.transaction_id}")
 
         try:
-            pdf_writer = IncrementalPdfFileWriter(input_stream=BytesIO(base64.urlsafe_b64decode(in_data.base64_data)), strict=False)
+            pdf_writer = IncrementalPdfFileWriter(input_stream=BytesIO(base64.urlsafe_b64decode(in_data.pdf)), strict=False)
         except PdfReadError as _e:
             self.logger.debug(f"input pdf is not valid, err: {_e}")
-            return PDFSignReply(
+            return SealReply(
                 transaction_id=in_data.transaction_id,
-                base64_data=None,
+                pdf="",
                 create_ts=int(time.time()),
                 error=f"input pdf is not valid, err: {_e}",
+                service_name=self.service_name,
             )
 
         pdf_writer.document_meta.keywords = [f"transaction_id:{in_data.transaction_id}"]
@@ -86,11 +80,12 @@ class Sealer:
             )
         except Exception as _e:
             self.logger.debug(f"pkcs11 signer creation failed, err: {_e}")
-            return PDFSignReply(
+            return SealReply(
                 transaction_id=in_data.transaction_id,
-                base64_data=None,
+                pdf="",
                 create_ts=int(time.time()),
                 error=f"pkcs11 signer creation failed, err: {_e}",
+                service_name=self.service_name,
             )
         self.logger.debug("pkcs11 signer created")
 
@@ -124,11 +119,12 @@ class Sealer:
             err_msg = f"input pdf is encrypted, err: {_e}"
             self.logger.error("error: " + err_msg)
 
-            return PDFSignReply(
+            return SealReply(
                 transaction_id=in_data.transaction_id,
-                base64_data=None,
+                pdf="",
                 create_ts=int(time.time()),
                 error=err_msg,
+                service_name=self.service_name,
             )
 
         base64_encoded = base64.b64encode(signed_pdf.getvalue()).decode("utf-8")
@@ -139,9 +135,10 @@ class Sealer:
         self.logger.debug(f"transaction_id: {in_data.transaction_id}")
         self.logger.debug(f"base64_data: {base64_encoded}")
     
-        return PDFSignReply(
+        return SealReply(
+            service_name=self.service_name,
             transaction_id=in_data.transaction_id,
-            base64_data=base64_encoded,
-            create_ts=int(time.time()),
+            pdf=base64_encoded,
             error="",
+            create_ts=int(time.time()),
         )

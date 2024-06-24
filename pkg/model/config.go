@@ -26,12 +26,12 @@ type Mongo struct {
 	Disable bool   `yaml:"disable" validate:"required"`
 }
 
-// KeyValue holds the key/value configuration
-type KeyValue struct {
-	Addr     string `yaml:"addr" validate:"required"`
-	DB       int    `yaml:"db" validate:"required"`
-	Password string `yaml:"password" validate:"required"`
-	PDF      PDF    `yaml:"pdf" validate:"required"`
+// ETCD holds the key/value configuration
+type ETCD struct {
+	Addresses []string `yaml:"addresses" validate:"required"`
+	Password  string   `yaml:"password" validate:"required"`
+	Username  string   `yaml:"username"`
+	PDF       PDF      `yaml:"pdf" validate:"required"`
 }
 
 // Log holds the log configuration
@@ -42,14 +42,16 @@ type Log struct {
 
 // Common holds the common configuration
 type Common struct {
-	HTTPProxy  string            `yaml:"http_proxy"`
-	Production bool              `yaml:"production"`
-	Log        Log               `yaml:"log"`
-	Mongo      Mongo             `yaml:"mongo" validate:"required"`
-	BasicAuth  map[string]string `yaml:"basic_auth"`
-	Tracing    OTEL              `yaml:"tracing" validate:"required"`
-	Queues     Queues            `yaml:"queues" validate:"omitempty"`
-	KeyValue   KeyValue          `yaml:"key_value" validate:"omitempty"`
+	HTTPProxy          string            `yaml:"http_proxy"`
+	Production         bool              `yaml:"production"`
+	Log                Log               `yaml:"log"`
+	Mongo              Mongo             `yaml:"mongo" validate:"required"`
+	BasicAuth          map[string]string `yaml:"basic_auth"`
+	Tracing            OTEL              `yaml:"tracing" validate:"required"`
+	Queues             Queues            `yaml:"queues" validate:"omitempty"`
+	ETCD               ETCD              `yaml:"etcd" validate:"omitempty"`
+	SealerGRPCHosts    []string          `yaml:"sealer_grpc_hosts" validate:"omitempty"`
+	ValidatorGRPCHosts []string          `yaml:"validator_grpc_hosts" validate:"omitempty"`
 }
 
 // SMT Spares Merkel Tree configuration
@@ -108,9 +110,9 @@ type APIGW struct {
 }
 
 // Sealer holds the sealer configuration
-type Sealer struct {
-	GRPCServer GRPCServer `yaml:"grpc_server" validate:"required"`
-}
+//type Sealer struct {
+//	GRPCServer GRPCServer `yaml:"grpc_server" validate:"required"`
+//}
 
 // OTEL holds the opentelemetry configuration
 type OTEL struct {
@@ -124,5 +126,5 @@ type Cfg struct {
 	APIGW      APIGW      `yaml:"apigw" validate:"omitempty"`
 	Cache      Cache      `yaml:"cache" validate:"omitempty"`
 	Persistent Persistent `yaml:"persistent" validate:"omitempty"`
-	Sealer     Sealer     `yaml:"sealer" validate:"omitempty"`
+	//Sealer     Sealer     `yaml:"sealer" validate:"omitempty"`
 }

@@ -85,10 +85,12 @@ func New(ctx context.Context, config *model.Cfg, api *apiv1.Client, tp *trace.Tr
 	rgAPIv1 := rgRoot.Group("api/v1")
 
 	rgPDF := rgAPIv1.Group("/pdf")
-	rgPDF.Use(s.middlewareJWTAuth(ctx))
+	if s.config.APIGW.JWTAuth.Enabled {
+		rgPDF.Use(s.middlewareJWTAuth(ctx))
+	}
 	s.regEndpoint(ctx, rgPDF, http.MethodPost, "/sign", s.endpointSignPDF)
-	s.regEndpoint(ctx, rgPDF, http.MethodPost, "/validate", s.endpointValidatePDF)
 	s.regEndpoint(ctx, rgPDF, http.MethodGet, "/:transaction_id", s.endpointGetSignedPDF)
+	s.regEndpoint(ctx, rgPDF, http.MethodPost, "/validate", s.endpointValidatePDF)
 	s.regEndpoint(ctx, rgPDF, http.MethodPut, "/revoke/:transaction_id", s.endpointPDFRevoke)
 
 	// Run http server

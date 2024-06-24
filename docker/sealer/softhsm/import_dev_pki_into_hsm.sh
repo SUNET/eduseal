@@ -30,13 +30,13 @@ init_hsm() {
 
 import_private_key() {
     printf "import private key\n"
-    pkcs11-tool --module "${pkcs11_module}" -l --pin "${pkcs11_pin}" --write-object "${pki_folder}"/private.der --type privkey --id 1001 --label "${pkcs11_key_label}"
+    pkcs11-tool --module "${pkcs11_module}" -l --pin "${pkcs11_pin}" --write-object "${pki_folder}"/document_sealing_private.der --type privkey --id 1001 --label "${pkcs11_key_label}"
     printf "done!\n"
 }
 
 import_cert() {
     printf "import certificate\n"
-    pkcs11-tool --module "${pkcs11_module}" -l --pin "${pkcs11_pin}" --write-object "${pki_folder}"/example.crt --type cert --id 2002 --label "${pkcs11_cert_label}"
+    pkcs11-tool --module "${pkcs11_module}" -l --pin "${pkcs11_pin}" --write-object "${pki_folder}"/document_sealing.crt --type cert --id 2002 --label "${pkcs11_cert_label}"
     printf "done!\n"
 }
 

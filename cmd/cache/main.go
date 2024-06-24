@@ -4,9 +4,7 @@ import (
 	"context"
 	"eduseal/internal/cache/apiv1"
 	"eduseal/internal/cache/httpserver"
-	"eduseal/internal/cache/simplequeue"
 	"eduseal/pkg/configuration"
-	"eduseal/pkg/kvclient"
 	"eduseal/pkg/logger"
 	"eduseal/pkg/trace"
 	"os"
@@ -39,19 +37,7 @@ func main() {
 		panic(err)
 	}
 
-	kvClient, err := kvclient.New(ctx, cfg, tracer, log.New("kvClient"))
-	services["kvService"] = kvClient
-	if err != nil {
-		panic(err)
-	}
-
-	queueService, err := simplequeue.New(ctx, kvClient, tracer, cfg, log.New("queue"))
-	services["queueService"] = queueService
-	if err != nil {
-		panic(err)
-	}
-
-	apiv1Client, err := apiv1.New(ctx, kvClient, tracer, cfg, log.New("apiv1"))
+	apiv1Client, err := apiv1.New(ctx, tracer, cfg, log.New("apiv1"))
 	if err != nil {
 		panic(err)
 	}

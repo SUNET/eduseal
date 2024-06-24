@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	apiv1_status "eduseal/internal/gen/status/apiv1.status"
+	"eduseal/internal/gen/status/v1_status"
 	"eduseal/pkg/logger"
 	"eduseal/pkg/model"
 	"eduseal/pkg/trace"
@@ -33,7 +33,7 @@ type Service struct {
 	cfg        *model.Cfg
 	log        *logger.Log
 	tp         *trace.Tracer
-	probeStore *apiv1_status.StatusProbeStore
+	probeStore *v1_status.StatusProbeStore
 
 	EduSealSigningColl *EduSealSigningColl
 }
@@ -44,7 +44,7 @@ func New(ctx context.Context, cfg *model.Cfg, tp *trace.Tracer, log *logger.Log)
 		log:        log,
 		cfg:        cfg,
 		tp:         tp,
-		probeStore: &apiv1_status.StatusProbeStore{},
+		probeStore: &v1_status.StatusProbeStore{},
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
@@ -84,14 +84,14 @@ func (s *Service) connect(ctx context.Context) error {
 }
 
 // Status returns the status of the database
-func (s *Service) Status(ctx context.Context) *apiv1_status.StatusProbe {
+func (s *Service) Status(ctx context.Context) *v1_status.StatusProbe {
 	ctx, span := s.tp.Start(ctx, "db:status")
 	defer span.End()
 
 	if time.Now().Before(s.probeStore.NextCheck.AsTime()) {
 		return s.probeStore.PreviousResult
 	}
-	probe := &apiv1_status.StatusProbe{
+	probe := &v1_status.StatusProbe{
 		Name:          "db",
 		Healthy:       true,
 		Message:       "OK",

@@ -5,7 +5,7 @@ import warnings
 
 import eduseal.sealer.v1_sealer_pb2 as v1__sealer__pb2
 
-GRPC_GENERATED_VERSION = '1.64.0'
+GRPC_GENERATED_VERSION = '1.64.1'
 GRPC_VERSION = grpc.__version__
 EXPECTED_ERROR_RELEASE = '1.65.0'
 SCHEDULED_RELEASE_DATE = 'June 25, 2024'
@@ -31,10 +31,7 @@ if _version_not_supported:
 
 
 class SealerStub(object):
-    """import "google/protobuf/timestamp.proto";
-    import "google/protobuf/any.proto";
-
-    Sealer seals documents
+    """Sealer seals documents
     """
 
     def __init__(self, channel):
@@ -51,10 +48,7 @@ class SealerStub(object):
 
 
 class SealerServicer(object):
-    """import "google/protobuf/timestamp.proto";
-    import "google/protobuf/any.proto";
-
-    Sealer seals documents
+    """Sealer seals documents
     """
 
     def Seal(self, request, context):
@@ -80,10 +74,7 @@ def add_SealerServicer_to_server(servicer, server):
 
  # This class is part of an EXPERIMENTAL API.
 class Sealer(object):
-    """import "google/protobuf/timestamp.proto";
-    import "google/protobuf/any.proto";
-
-    Sealer seals documents
+    """Sealer seals documents
     """
 
     @staticmethod

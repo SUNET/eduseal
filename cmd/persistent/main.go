@@ -5,9 +5,7 @@ import (
 	"eduseal/internal/persistent/apiv1"
 	"eduseal/internal/persistent/db"
 	"eduseal/internal/persistent/httpserver"
-	"eduseal/internal/persistent/simplequeue"
 	"eduseal/pkg/configuration"
-	"eduseal/pkg/kvclient"
 	"eduseal/pkg/logger"
 	"eduseal/pkg/trace"
 	"os"
@@ -40,12 +38,6 @@ func main() {
 		panic(err)
 	}
 
-	kvClient, err := kvclient.New(ctx, cfg, tracer, log.New("kvClient"))
-	services["kvClient"] = kvClient
-	if err != nil {
-		log.Error(err, "kvClient")
-		panic(err)
-	}
 	dbService, err := db.New(ctx, cfg, tracer, log.New("db"))
 	services["dbService"] = dbService
 	if err != nil {
@@ -53,14 +45,7 @@ func main() {
 		panic(err)
 	}
 
-	queueService, err := simplequeue.New(ctx, kvClient, dbService, tracer, cfg, log.New("queue"))
-	services["queueService"] = queueService
-	if err != nil {
-		log.Error(err, "queueService")
-		panic(err)
-	}
-
-	apiv1Client, err := apiv1.New(ctx, kvClient, dbService, tracer, cfg, log.New("apiv1"))
+	apiv1Client, err := apiv1.New(ctx, dbService, tracer, cfg, log.New("apiv1"))
 	if err != nil {
 		log.Error(err, "apiv1Client")
 		panic(err)

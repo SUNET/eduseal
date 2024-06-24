@@ -1,7 +1,7 @@
 package model
 
 import (
-	apiv1_status "eduseal/internal/gen/status/apiv1.status"
+	"eduseal/internal/gen/status/v1_status"
 	"fmt"
 	"log"
 	"time"
@@ -36,7 +36,7 @@ type ProbeStore struct {
 }
 
 // Probes contains probes
-type Probes []*apiv1_status.StatusProbe
+type Probes []*v1_status.StatusProbe
 
 var (
 	// BuildVariableGitCommit contains ldflags -X variable git commit hash
@@ -56,22 +56,26 @@ var (
 
 	// BuildVersion contains ldsflags -X variable build version
 	BuildVersion string = "undef"
+
+	// ServiceName contains ldsflags -X variable service name
+	ServiceName string = "undef"
 )
 
 // Check checks the status of each status, return the first that does not pass.
-func (probes Probes) Check(serviceName string) *apiv1_status.StatusReply {
-	health := &apiv1_status.StatusReply{
-		Data: &apiv1_status.StatusReply_Data{
+func (probes Probes) Check(serviceName string) *v1_status.StatusReply {
+	health := &v1_status.StatusReply{
+		Data: &v1_status.StatusReply_Data{
 			ServiceName: serviceName,
-			BuildVariables: &apiv1_status.BuildVariables{
-				GitCommit: BuildVariableGitCommit,
-				GitBranch: BuildVariableGitBranch,
-				Timestamp: BuildVariableTimestamp,
-				GoVersion: BuildVariableGoVersion,
-				GoArch:    BuildVariableGoArch,
-				Version:   BuildVersion,
+			BuildVariables: &v1_status.BuildVariables{
+				GitCommit:   BuildVariableGitCommit,
+				GitBranch:   BuildVariableGitBranch,
+				Timestamp:   BuildVariableTimestamp,
+				GoVersion:   BuildVariableGoVersion,
+				GoArch:      BuildVariableGoArch,
+				Version:     BuildVersion,
+				ServiceName: ServiceName,
 			},
-			Probes: []*apiv1_status.StatusProbe{},
+			Probes: []*v1_status.StatusProbe{},
 			Status: fmt.Sprintf(StatusOK, serviceName),
 		},
 	}

@@ -5,12 +5,6 @@ import os
 import sys
 from logging import Logger
 
-class RedisConfig(BaseModel):
-    host: str
-    port: int
-    db: int
-    password: Optional[str] = None
-
 class PdfSignatureMetadata(BaseModel):
     location: str
     reason: str
@@ -28,10 +22,7 @@ class PKCS11(BaseModel):
 
 
 class CFG(BaseModel):
-    seal_queue_name: str
-    add_sealed_queue_name: str
     pkcs11: PKCS11
-    redis: RedisConfig
     metadata: PdfSignatureMetadata
 
 def parse(log: Logger) -> CFG:
@@ -40,10 +31,15 @@ def parse(log: Logger) -> CFG:
         log.error("no config file env variable found")
         sys.exit(1)
 
+    service_name = os.getenv("EDUSEAL_SERVICE_NAME")
+    if service_name is None:
+        log.error("no service name env variable found")
+        sys.exit(1)
+
     try:
         with open(file_name, "r")as f:
              data = yaml.load(f, yaml.FullLoader)
-             cfg = CFG.model_validate(data["sealer"])
+             cfg = CFG.model_validate(data[service_name])
     except Exception as e:
             log.error(f"open file {file_name} failed, error: {e}")
             sys.exit(1)

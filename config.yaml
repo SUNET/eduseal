@@ -7,22 +7,21 @@ common:
   tracing:
     addr: jaeger:4318
     type: jaeger
-  queues:
-    simple_queue:
-      eduseal_seal:
-        name: eduseal_seal
-      eduseal_add_sealed:
-        name: eduseal_add_sealed
-      eduseal_del_sealed:
-        name: eduseal_del_sealed
-      eduseal_validate:
-        name: eduseal_validate
-      eduseal_persistent_save:
-        name: eduseal_persistent_save
-  key_value:
-    db: 3
-    addr: redis:6379
+  etcd:
+    addresses: 
+      - http://etcd1:2379
+      - http://etcd2:2379
+      - http://etcd3:2379
+      - http://etcd4:2379
+      - http://etcd5:2379
+    #username: "test-username"
     password: test-password
+  sealer_grpc_hosts:
+    - sealer_1:50051
+    - sealer_2:50051
+  validator_grpc_hosts: 
+    - validator_1:50051
+    - validator_2:50051
 
 cache:
   api_server:
@@ -36,16 +35,11 @@ apigw:
   api_server:
     addr: :8080
   jwt_auth:
-    enabled: true
+    enabled: false
     access:
       "860223": eduseal-test
 
-sealer:
-  grpc_server:
-    addr: sealer1:50051
-    secure: false
-  seal_queue_name: eduseal_seal
-  add_sealed_queue_name: eduseal_add_sealed
+sealer_1:
   pkcs11:
     pin: "1234"
     module: /usr/lib/softhsm/libsofthsm2.so
@@ -53,10 +47,6 @@ sealer:
     key_label: test_key_label
     cert_label: test_cert_label
     #slot: 0
-  redis:
-    host: "redis"
-    port: 6379
-    db: 3
   metadata:
     location: "Stockholm"
     reason: "Future validation"
@@ -64,11 +54,23 @@ sealer:
     contact_info: "info@sunet.se"
     field_name: "Signature1"
 
-validator:
-  validate_queue_name: eduseal_validate
-  #trust_root_folder: "/opt/sunet/pki"
+sealer_2:
+  pkcs11:
+    pin: "1234"
+    module: /usr/lib/softhsm/libsofthsm2.so
+    label: test_label
+    key_label: test_key_label
+    cert_label: test_cert_label
+    #slot: 0
+  metadata:
+    location: "Stockholm"
+    reason: "Future validation"
+    name: "SUNET/Vetenskapsrådet"
+    contact_info: "info@sunet.se"
+    field_name: "Signature1"
+
+validator_1:
   validation_certificates_path: "/validation_certificates"
-  redis:
-    host: "redis"
-    port: 6379
-    db: 3
+
+validator_2:
+  validation_certificates_path: "/validation_certificates"

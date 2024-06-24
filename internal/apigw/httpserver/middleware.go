@@ -3,7 +3,6 @@ package httpserver
 import (
 	"context"
 	"eduseal/pkg/helpers"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -86,8 +85,8 @@ func (s *Service) middlewareClientCertAuth(ctx context.Context) gin.HandlerFunc 
 
 // middlewareJWTAuth middleware to require authentication
 func (s *Service) middlewareJWTAuth(ctx context.Context) gin.HandlerFunc {
-	//ctx, span := s.tp.Start(ctx, "httpserver:middlewareJWTAuth")
-	//defer span.End()
+	ctx, span := s.tp.Start(ctx, "httpserver:middlewareJWTAuth")
+	defer span.End()
 
 	log := s.logger.New("middlewareJWTAuth")
 	log.Debug("middlewareJWTAuth", "enabled", s.config.APIGW.JWTAuth.Enabled)
@@ -95,11 +94,13 @@ func (s *Service) middlewareJWTAuth(ctx context.Context) gin.HandlerFunc {
 		tokenString := c.GetHeader("Authorization")
 
 		if tokenString == "" {
-			log.Debug("Authorization header not found")
-			//c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-			//status := c.Writer.Status()
-			//log.Trace("crash", "error", r, "status", status, "url", c.Request.URL.Path, "method", c.Request.Method)
-			renderContent(c, 401, gin.H{"data": nil, "error": helpers.NewError("unauthorized")})
+			details := "Authorization header not found"
+			log.Debug(details)
+			err := helpers.Error{
+				Title:   "unauthorized",
+				Details: details,
+			}
+			renderContent(c, 401, gin.H{"data": nil, "error": err})
 			return
 		}
 		tokenString, found := strings.CutPrefix(tokenString, "Bearer ")
@@ -120,35 +121,51 @@ func (s *Service) middlewareJWTAuth(ctx context.Context) gin.HandlerFunc {
 
 		jwks, err := keyfunc.Get("https://auth-test.sunet.se/.well-known/jwks.json", options)
 		if err != nil {
-			log.Error(err, "Faild to create JWKS from resource at the given URL")
-			//c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-			renderContent(c, 401, gin.H{"data": nil, "error": helpers.NewError("unauthorized")})
+			details := "Faild to create JWKS from resource at the given URL"
+			log.Debug(details)
+			err := helpers.Error{
+				Title:   "unauthorized",
+				Details: details,
+			}
+			renderContent(c, 401, gin.H{"data": nil, "error": err})
 			c.Abort()
 			return
 		}
 
 		token, err := jwt.Parse(tokenString, jwks.Keyfunc)
 		if err != nil {
-			log.Error(err, "tokenParse")
-			//c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-			renderContent(c, 401, gin.H{"data": nil, "error": helpers.NewError("unauthorized")})
+			details := "Failed to parse token"
+			log.Debug(details)
+			err := helpers.Error{
+				Title:   "unauthorized",
+				Details: details,
+			}
+			renderContent(c, 401, gin.H{"data": nil, "error": err})
 			c.Abort()
 			return
 		}
 
 		claims, ok := token.Claims.(jwt.MapClaims)
 		if !ok {
-			log.Error(errors.New("claims can't be cast to jwt.MapClaims"), "middlewareJWTAuth")
-			// c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-			renderContent(c, 401, gin.H{"data": nil, "error": helpers.NewError("unauthorized")})
+			details := "claims can't be cast to jwt.MapClaims"
+			log.Debug(details)
+			err := helpers.Error{
+				Title:   "unauthorized",
+				Details: details,
+			}
+			renderContent(c, 401, gin.H{"data": nil, "error": err})
 			c.Abort()
 			return
 		}
 
 		if !token.Valid {
-			log.Debug("token not valid")
-			// c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-			renderContent(c, 401, gin.H{"data": nil, "error": helpers.NewError("unauthorized")})
+			details := "token not valid"
+			log.Debug(details)
+			err := helpers.Error{
+				Title:   "unauthorized",
+				Details: details,
+			}
+			renderContent(c, 401, gin.H{"data": nil, "error": err})
 			c.Abort()
 			return
 		}
@@ -156,25 +173,39 @@ func (s *Service) middlewareJWTAuth(ctx context.Context) gin.HandlerFunc {
 		// Check if the requested access is allowed
 		organizationID, ok := claims["organization_id"]
 		if !ok {
-			log.Debug("organization_id not found in claims")
-			renderContent(c, 401, gin.H{"data": nil, "error": helpers.NewError("unauthorized")})
+			details := "organization_id not found in claims"
+			log.Debug(details)
+			err := helpers.Error{
+				Title:   "unauthorized",
+				Details: details,
+			}
+			renderContent(c, 401, gin.H{"data": nil, "error": err})
 			c.Abort()
 			return
 		}
 
 		organizationIDStr, ok := organizationID.(string)
 		if !ok {
-			log.Debug("organization_id not a string")
-			renderContent(c, 401, gin.H{"data": nil, "error": helpers.NewError("unauthorized")})
+			details := "organization_id not a string"
+			log.Debug(details)
+			err := helpers.Error{
+				Title:   "unauthorized",
+				Details: details,
+			}
+			renderContent(c, 401, gin.H{"data": nil, "error": err})
 			c.Abort()
 			return
 		}
 
 		accessService, ok := s.config.APIGW.JWTAuth.Access[organizationIDStr]
 		if !ok {
-			log.Debug("organization_id not found in config")
-			//			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-			renderContent(c, 401, gin.H{"data": nil, "error": helpers.NewError("unauthorized")})
+			details := "organization_id not found in config"
+			log.Debug(details)
+			err := helpers.Error{
+				Title:   "unauthorized",
+				Details: details,
+			}
+			renderContent(c, 401, gin.H{"data": nil, "error": err})
 			c.Abort()
 			return
 		}
@@ -188,9 +219,13 @@ func (s *Service) middlewareJWTAuth(ctx context.Context) gin.HandlerFunc {
 			}
 		}
 		if !allowed {
-			log.Debug("requested access not allowed")
-			//c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-			renderContent(c, 401, gin.H{"data": nil, "error": helpers.NewError("unauthorized")})
+			details := "requested access not allowed"
+			log.Debug(details)
+			err := helpers.Error{
+				Title:   "unauthorized",
+				Details: details,
+			}
+			renderContent(c, 401, gin.H{"data": nil, "error": err})
 			c.Abort()
 			return
 		}

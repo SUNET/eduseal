@@ -35,8 +35,8 @@ COPY requirements.txt ./
 COPY src ./src
 COPY docker/sealer/softhsm/grpc/start.sh ./
 COPY docker/sealer/softhsm/import_dev_pki_into_hsm.sh ./
-COPY docker/sealer/softhsm/private.der ./pki/private.der
-COPY docker/sealer/softhsm/example.crt ./pki/example.crt
+COPY docker/sealer/softhsm/document_sealing_private.der ./pki/document_sealing_private.der
+COPY docker/sealer/softhsm/document_sealing.crt ./pki/document_sealing.crt
 
 RUN python3 -mvenv /opt/sunet/venv
 RUN /opt/sunet/venv/bin/pip install --upgrade pip wheel
@@ -44,7 +44,7 @@ RUN /opt/sunet/venv/bin/pip install --index-url https://pypi.sunet.se/simple -r 
 
 RUN mkdir -p /var/log/sunet && chmod 770 /var/log/sunet
 
-EXPOSE 8080
+HEALTHCHECK --interval=5s CMD ls /tmp/healthcheck || exit 1
 
 ENTRYPOINT [ "/bin/bash"]
 

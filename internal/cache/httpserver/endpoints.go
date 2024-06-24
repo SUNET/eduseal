@@ -2,7 +2,7 @@ package httpserver
 
 import (
 	"context"
-	apiv1_status "eduseal/internal/gen/status/apiv1.status"
+	"eduseal/internal/gen/status/v1_status"
 
 	"github.com/gin-gonic/gin"
 )
@@ -11,7 +11,7 @@ func (s *Service) endpointStatus(ctx context.Context, c *gin.Context) (any, erro
 	ctx, span := s.tp.Start(ctx, "apiv1:Status")
 	defer span.End()
 
-	request := &apiv1_status.StatusRequest{}
+	request := &v1_status.StatusRequest{}
 	reply, err := s.apiv1.Status(ctx, request)
 	if err != nil {
 		return nil, err

@@ -4,3 +4,6 @@ pki/*
 redis-data/
 .idea/
 .venv
+developer_tools/pki/*
+docker/sealer/softhsm/*.der
+docker/sealer/softhsm/*.crt

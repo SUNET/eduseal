@@ -5,9 +5,9 @@ import (
 	"eduseal/internal/apigw/apiv1"
 	"eduseal/internal/apigw/db"
 	"eduseal/internal/apigw/httpserver"
-	"eduseal/internal/apigw/simplequeue"
 	"eduseal/pkg/configuration"
-	"eduseal/pkg/kvclient"
+	"eduseal/pkg/etcdclient"
+	"eduseal/pkg/grpcclient"
 	"eduseal/pkg/logger"
 	"eduseal/pkg/trace"
 	"os"
@@ -40,24 +40,24 @@ func main() {
 		panic(err)
 	}
 
-	kvClient, err := kvclient.New(ctx, cfg, tracer, log.New("kvClient"))
-	services["kvClient"] = kvClient
+	grpcClient, err := grpcclient.New(ctx, cfg, log.New("grpcclient"))
 	if err != nil {
 		panic(err)
 	}
+
+	etcdClient, err := etcdclient.New(ctx, cfg, tracer, log.New("etcdclient"))
+	services["etcdClient"] = etcdClient
+	if err != nil {
+		panic(err)
+	}
+
 	dbService, err := db.New(ctx, cfg, tracer, log.New("db"))
 	services["dbService"] = dbService
 	if err != nil {
 		panic(err)
 	}
 
-	simpleQueueService, err := simplequeue.New(ctx, kvClient, tracer, cfg, log.New("queue"))
-	services["queueService"] = simpleQueueService
-	if err != nil {
-		panic(err)
-	}
-
-	apiv1Client, err := apiv1.New(ctx, kvClient, dbService, simpleQueueService, tracer, cfg, log.New("apiv1"))
+	apiv1Client, err := apiv1.New(ctx, etcdClient, grpcClient, dbService, tracer, cfg, log.New("apiv1"))
 	if err != nil {
 		panic(err)
 	}

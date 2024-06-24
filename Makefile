@@ -55,13 +55,13 @@ DOCKER_TAG_GOBUILD 				:= docker.sunet.se/eduseal/gobuild:$(VERSION)
 DOCKER_TAG_SEALER_USB			:= docker.sunet.se/eduseal/sealer_usb:$(VERSION)
 DOCKER_TAG_SEALER_SOFTHSM		:= docker.sunet.se/eduseal/sealer_softhsm:$(VERSION)
 DOCKER_TAG_SEALER_SOFTHSM_GRPC	:= docker.sunet.se/eduseal/sealer_softhsm_grpc:$(VERSION)
-DOCKER_TAG_VALIDATOR			:= docker.sunet.se/eduseal/validator:$(VERSION)
+DOCKER_TAG_VALIDATOR_GRPC		:= docker.sunet.se/eduseal/validator_grpc:$(VERSION)
 
 
 #### Docker build
 docker-build-non-pkcs11-containers: docker-build-cache docker-build-persistent docker-build-apigw docker-build-validator
 docker-build-usb: docker-build-non-pkcs11-containers docker-build-sealer-usb
-docker-build-softhsm: docker-build-non-pkcs11-containers docker-build-sealer-softhsm
+docker-build-softhsm: docker-build-non-pkcs11-containers docker-build-sealer-softhsm-grpc
 
 docker-build-apigw:
 	$(info Docker building apigw with tag: $(VERSION))
@@ -88,12 +88,12 @@ docker-build-sealer-softhsm-grpc:
 	docker build --tag $(DOCKER_TAG_SEALER_SOFTHSM_GRPC) --file docker/sealer/softhsm/grpc/Dockerfile .
 
 docker-build-validator:
-	$(info building docker image $(DOCKER_TAG_VALIDATOR) )
-	docker build --tag $(DOCKER_TAG_VALIDATOR) --file dockerfiles/validator .
+	$(info building docker image $(DOCKER_TAG_VALIDATOR_GRPC) )
+	docker build --tag $(DOCKER_TAG_VALIDATOR_GRPC) --file docker/validator/grpc/Dockerfile .
 
 docker-build-gobuild:
 	$(info Docker Building gobuild with tag: $(VERSION))
-	docker build --tag $(DOCKER_TAG_GOBUILD) --file dockerfiles/gobuild .
+	docker build --tag $(DOCKER_TAG_GOBUILD) --file docker/gobuild .
 
 #### Docker push
 docker-push: docker-push-cache docker-push-persistent docker-push-apigw docker-push-sealer-usb docker-push-validator
@@ -171,7 +171,7 @@ clean_redis:
 ci_build: docker-build docker-push
 	$(info CI Build)
 
-proto: proto-status proto-sealer
+proto: proto-status proto-sealer proto-validator
 
 proto-status:
 	protoc --proto_path=./proto/ --go-grpc_opt=module=eduseal --go_opt=module=eduseal --go_out=. --go-grpc_out=. ./proto/v1-status-model.proto 
@@ -179,8 +179,17 @@ proto-status:
 proto-sealer:
 	protoc --proto_path=./proto/ --go-grpc_opt=module=eduseal --go_opt=module=eduseal --go_out=. --go-grpc_out=. ./proto/v1-sealer.proto 
 
+proto-validator:
+	protoc --proto_path=./proto/ --go-grpc_opt=module=eduseal --go_opt=module=eduseal --go_out=. --go-grpc_out=. ./proto/v1-validator.proto 
+
+proto-python: proto-sealer-python proto-validator-python
+
 proto-sealer-python:
 	python -m grpc_tools.protoc --proto_path=./proto/ --python_out=./src/eduseal/sealer --grpc_python_out=./src/eduseal/sealer ./proto/v1-sealer.proto
+
+proto-validator-python:
+	python -m grpc_tools.protoc --proto_path=./proto/ --python_out=./src/eduseal/validator --grpc_python_out=./src/eduseal/validator ./proto/v1-validator.proto
+
 
 swagger: swagger-apigw swagger-fmt
 

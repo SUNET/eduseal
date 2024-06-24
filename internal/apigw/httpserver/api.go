@@ -3,7 +3,7 @@ package httpserver
 import (
 	"context"
 	"eduseal/internal/apigw/apiv1"
-	apiv1_status "eduseal/internal/gen/status/apiv1.status"
+	"eduseal/internal/gen/status/v1_status"
 )
 
 // Apiv1 interface
@@ -15,5 +15,5 @@ type Apiv1 interface {
 	PDFRevoke(ctx context.Context, req *apiv1.PDFRevokeRequest) (*apiv1.PDFRevokeReply, error)
 
 	// misc endpoints
-	Health(ctx context.Context, req *apiv1_status.StatusRequest) (*apiv1_status.StatusReply, error)
+	Health(ctx context.Context, req *v1_status.StatusRequest) (*v1_status.StatusReply, error)
 }

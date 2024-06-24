@@ -1,2 +1,0 @@
-v0.0.1 : first public release
-v0.0.2 : fix failed tests
