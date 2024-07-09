@@ -14,7 +14,7 @@ import (
 )
 
 type envVars struct {
-	EduIDConfigYAML string `envconfig:"VC_CONFIG_YAML" required:"true"`
+	EduSealConfigYAML string `envconfig:"EDUSEAL_CONFIG_YAML" required:"true"`
 }
 
 // Parse parses config file from VC_CONFIG_YAML environment variable
@@ -25,7 +25,7 @@ func Parse(ctx context.Context, logger *logger.Log) (*model.Cfg, error) {
 		return nil, err
 	}
 
-	configPath := env.EduIDConfigYAML
+	configPath := env.EduSealConfigYAML
 
 	cfg := &model.Cfg{}
 

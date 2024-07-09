@@ -1,7 +1,6 @@
 pyhanko
-asyncpg
+pydantic
 cryptography
-requests
 openapi_schema_validator
 pkgutil-resolve-name
 importlib-resources
@@ -10,5 +9,8 @@ importlib-metadata
 exceptiongroup
 setuptools
 python-pkcs11
-retask
-kafka-python
+grpcio-tools
+grpcio
+grpclib
+protobuf
+grpcio-health-checking

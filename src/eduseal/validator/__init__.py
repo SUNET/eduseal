@@ -1,3 +1,3 @@
-"""eduSeal signing and validation service"""
+"""eduSeal validation service"""
 
 __author__ = "sunet"

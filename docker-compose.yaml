@@ -1,108 +1,146 @@
 ---
-version: "3"
 
 services:
   apigw:
     container_name: "eduseal_dev_apigw"
     image: docker.sunet.se/eduseal/apigw:latest
+    #restart: always
+    volumes:
+      - ./config.yaml:/config.yaml:ro
+      - /var/log/sunet:/var/log/sunet
+      - ./developer_tools/pki/rootCA.crt:/etc/ssl/certs/eduseal_root_CA.crt:ro
+      - ./developer_tools/pki/apigw.crt:/etc/ssl/certs/apigw.crt:ro
+      - ./developer_tools/pki/apigw.key:/etc/ssl/private/apigw.key:ro
+      - ./developer_tools/pki/apigw.pem:/etc/ssl/private/apigw.pem:ro
+    depends_on:
+      #- mongo
+      - sealer_1
+      - sealer_2
+      - validator_1
+      - validator_2
+    links:
+      - sealer_1
+      - sealer_2
+      - validator_1
+      - validator_2
+    networks:
+      eduseal-dev-net:
+        ipv4_address: 172.20.50.200
+    environment:
+      - "EDUSEAL_CONFIG_YAML=config.yaml"
+      - "EDUSEAL_SERVICE_NAME=apigw"
+    # - "GRPC_GO_LOG_VERBOSITY_LEVEL=99"
+    # - "GRPC_GO_LOG_SEVERITY_LEVEL=info"
+
+  sealer_1:
+    container_name: "eduseal_dev_sealer_1"
+    image: docker.sunet.se/eduseal/sealer_softhsm:latest
     restart: always
     volumes:
       - ./config.yaml:/config.yaml:ro
       - /var/log/sunet:/var/log/sunet
-    depends_on:
-      - redis
-      - mongo
-    networks:
-      eduseal-dev-net:
-        ipv4_address: 172.20.50.2
-    environment:
-      - "VC_CONFIG_YAML=config.yaml"
-
-  cache:
-    container_name: "eduseal_dev_cache"
-    image: docker.sunet.se/eduseal/cache:latest
-    restart: always
-    volumes:
-      - ./config.yaml:/config.yaml:ro
-    depends_on:
-      - redis
-    networks:
-      eduseal-dev-net:
-        ipv4_address: 172.20.50.10
-    environment:
-      - "VC_CONFIG_YAML=config.yaml"
-
-  persistent:
-    container_name: "eduseal_dev_persistent"
-    image: docker.sunet.se/eduseal/persistent:latest
-    restart: always
-    volumes:
-      - ./config.yaml:/config.yaml:ro
-    depends_on:
-      - redis
-      - mongo
-    networks:
-      eduseal-dev-net:
-        ipv4_address: 172.20.50.12
-    environment:
-      - "VC_CONFIG_YAML=config.yaml"
-
-  pdfsigner:
-    container_name: "eduseal_dev_pdfsigner"
-    image: docker.sunet.se/dc4eu/py_pdfsigner_dev:latest
-    restart: always
-    volumes:
-      - ./config.yaml:/config.yaml:ro
-      - /var/log/sunet:/var/log/sunet
-    depends_on:
-      - redis
+      - ./developer_tools/pki/sealer_1.key:/etc/ssl/private/sealer_1.key:ro
+      - ./developer_tools/pki/sealer_1.pem:/etc/ssl/private/sealer_1.pem:ro
+      - ./developer_tools/pki/rootCA.crt:/etc/ssl/certs/eduseal_root_CA.crt:ro
+      - ./developer_tools/pki/document_sealing_private.der:/opt/sunet/pki/sealing.der:ro
+      - ./developer_tools/pki/document_sealing.crt:/opt/sunet/pki/sealing.crt:ro
+    expose:
+      - 50051
     networks:
       eduseal-dev-net:
         ipv4_address: 172.20.50.14
     environment:
-      - "CONFIG_YAML=config.yaml"
+      - "EDUSEAL_CONFIG_YAML=config.yaml"
+      - "EDUSEAL_SERVICE_NAME=sealer_1"
+      - "EDUSEAL_CONFIG_NAMESPACE=sealer_1"
 
-  pdfvalidator:
-    container_name: "eduseal_dev_pdfvalidator"
-    image: docker.sunet.se/dc4eu/py_pdfvalidator_dev:latest
+  sealer_2:
+    container_name: "eduseal_dev_sealer_2"
+    image: docker.sunet.se/eduseal/sealer_softhsm:latest
     restart: always
     volumes:
       - ./config.yaml:/config.yaml:ro
       - /var/log/sunet:/var/log/sunet
-    # - ./certs/SectigoRSADocumentSigningCA.crt:/app/SectigoRSADocumentSigningCA.crt:ro
-    # - ./certs/USERTrustRSAAddTrustCA.crt:/app/USERTrustRSAAddTrustCA.crt:ro
-    depends_on:
-      - redis
+      - ./developer_tools/pki/sealer_2.key:/etc/ssl/private/sealer_2.key:ro
+      - ./developer_tools/pki/sealer_2.pem:/etc/ssl/private/sealer_2.pem:ro
+      - ./developer_tools/pki/rootCA.crt:/etc/ssl/certs/eduseal_root_CA.crt:ro
+      - ./developer_tools/pki/document_sealing_private.der:/opt/sunet/pki/sealing.der:ro
+      - ./developer_tools/pki/document_sealing.crt:/opt/sunet/pki/sealing.crt:ro
+    expose:
+      - 50051
+    networks:
+      eduseal-dev-net:
+        ipv4_address: 172.20.50.15
+    environment:
+      - "EDUSEAL_CONFIG_YAML=config.yaml"
+      - "EDUSEAL_SERVICE_NAME=sealer_2"
+      - "EDUSEAL_CONFIG_NAMESPACE=sealer_2"
+
+  validator_1:
+    container_name: "eduseal_dev_validator_1"
+    image: docker.sunet.se/eduseal/validator_grpc:latest
+    restart: always
+    volumes:
+      - ./config.yaml:/config.yaml:ro
+      - /var/log/sunet:/var/log/sunet
+      - ./developer_tools/pki/validator_1.key:/etc/ssl/private/validator_1.key:ro
+      - ./developer_tools/pki/validator_1.pem:/etc/ssl/private/validator_1.pem:ro
+      - ./developer_tools/pki/rootCA.crt:/validation_certificates/rootCA.crt:ro
+    expose:
+      - 50051
     networks:
       eduseal-dev-net:
         ipv4_address: 172.20.50.16
     environment:
-      - "CONFIG_YAML=config.yaml"
+      - "EDUSEAL_CONFIG_YAML=config.yaml"
+      - "EDUSEAL_SERVICE_NAME=validator_1"
+      - "EDUSEAL_CONFIG_NAMESPACE=validator_1"
+
+  validator_2:
+    container_name: "eduseal_dev_validator_2"
+    image: docker.sunet.se/eduseal/validator_grpc:latest
+    restart: always
+    volumes:
+      - ./config.yaml:/config.yaml:ro
+      - /var/log/sunet:/var/log/sunet
+      - ./developer_tools/pki/validator_2.key:/etc/ssl/private/validator_2.key:ro
+      - ./developer_tools/pki/validator_2.pem:/etc/ssl/private/validator_2.pem:ro
+      - ./developer_tools/pki/rootCA.crt:/validation_certificates/rootCA.crt:ro
+    expose:
+      - 50051
+    networks:
+      eduseal-dev-net:
+        ipv4_address: 172.20.50.17
+    environment:
+      - "EDUSEAL_CONFIG_YAML=config.yaml"
+      - "EDUSEAL_SERVICE_NAME=validator_2"
+      - "EDUSEAL_CONFIG_NAMESPACE=validator_2"
 
   redis:
-    image: redis:alpine
+    image: redis
     container_name: "eduseal_dev_redis"
-    restart: always
-    expose:
-      - 6373
+    command: [ "redis-server", "/etc/redis/redis.conf" ]
     volumes:
-      - redis_data:/data
-    command: redis-server --appendonly yes
+      - /redis_data:/data
+      - /config/redis-1.conf:/etc/redis/redis.conf
+    expose:
+      - 6371
+      - 16379
     networks:
       eduseal-dev-net:
-        ipv4_address: 172.20.50.18
+        ipv4_address: 172.20.50.21
 
-  mongo:
-    image: mongo:4.0.10
-    container_name: "eduseal_dev_mongo"
-    restart: always
-    expose:
-      - 27017
-    volumes:
-      - mongo_data:/data
-    networks:
-      eduseal-dev-net:
-        ipv4_address: 172.20.50.20
+  #mongo:
+  #  image: mongo:4.0.10
+  #  container_name: "eduseal_dev_mongo"
+  #  restart: always
+  #  expose:
+  #    - 27017
+  #  volumes:
+  #    - mongo_data:/data
+  #  networks:
+  #    eduseal-dev-net:
+  #      ipv4_address: 172.20.50.26
 
   jaeger:
     image: jaegertracing/all-in-one:latest
@@ -114,7 +152,7 @@ services:
       - 4318
     networks:
       eduseal-dev-net:
-        ipv4_address: 172.20.50.22
+        ipv4_address: 172.20.50.30
     environment:
       - "COLLECTOR_OTLP_ENABLED=true"
 
@@ -128,5 +166,5 @@ networks:
       config:
         - subnet: 172.20.50.0/24
 volumes:
-  redis_data:
   mongo_data:
+  redis_data:

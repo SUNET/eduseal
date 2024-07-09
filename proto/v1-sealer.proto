@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package v1.sealer;
+
+option go_package = "eduseal/internal/gen/sealer/v1_sealer";
+
+// Sealer seals documents
+service Sealer {
+    rpc Seal (SealRequest) returns (SealReply) {}
+}
+
+message SealRequest {
+    string transaction_id = 1;
+    string data = 2;
+}
+
+message SealReply {
+    string sealer_backend = 1;
+    string transaction_id = 2;
+    string data = 3;
+    string error = 4;
+}

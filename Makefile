@@ -2,7 +2,6 @@
 
 NAME 					:= eduseal
 LDFLAGS                 := -ldflags "-w -s --extldflags '-static'"
-LDFLAGS_DYNAMIC			:= -ldflags "-w -s"
 PYTHON					:= $(shell which python)
 PIPCOMPILE				:= pip-compile -v --upgrade --generate-hashes --allow-unsafe --index-url https://pypi.sunet.se/simple
 PIPSYNC					:= pip-sync --index-url https://pypi.sunet.se/simple --python-executable $(PYTHON)
@@ -27,11 +26,11 @@ staticcheck:
 
 start:
 	$(info Run!)
-	docker-compose -f docker-compose.yaml up -d --remove-orphans
+	docker compose -f docker-compose.yaml up -d --remove-orphans
 
 stop:
 	$(info stopping eduSeal)
-	docker-compose -f docker-compose.yaml rm -s -f
+	docker compose -f docker-compose.yaml rm -s -f
 
 sync_py_deps:
 	$(PIPSYNC) requirements.txt
@@ -49,81 +48,78 @@ VERSION := latest
 endif
 
 
-DOCKER_TAG_APIGW 		:= docker.sunet.se/eduseal/apigw:$(VERSION)
-DOCKER_TAG_CACHE 		:= docker.sunet.se/eduseal/cache:$(VERSION)
-DOCKER_TAG_PERSISTENT 	:= docker.sunet.se/eduseal/persistent:$(VERSION)
-DOCKER_TAG_GOBUILD 		:= docker.sunet.se/eduseal/gobuild:$(VERSION)
+DOCKER_TAG_APIGW 				:= docker.sunet.se/eduseal/apigw:$(VERSION)
+DOCKER_TAG_GOBUILD 				:= docker.sunet.se/eduseal/gobuild:$(VERSION)
+DOCKER_TAG_SEALER_SECTIGO		:= docker.sunet.se/eduseal/sealer_sectigo:$(VERSION)
+DOCKER_TAG_SEALER_SOFTHSM		:= docker.sunet.se/eduseal/sealer_softhsm:$(VERSION)
+DOCKER_TAG_VALIDATOR			:= docker.sunet.se/eduseal/validator:$(VERSION)
 
 
-build: proto build-cache build-persistent build-apigw
-
-
-build-cache:
-	$(info Building cache)
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -v -o ./bin/$(NAME)_cache ${LDFLAGS} ./cmd/cache/main.go
-
-build-persistent:
-	$(info Building persistent)
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -v -o ./bin/$(NAME)_persistent ${LDFLAGS} ./cmd/persistent/main.go
-
-build-apigw:
-	$(info Building apigw)
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -v -o ./bin/$(NAME)_apigw ${LDFLAGS} ./cmd/apigw/main.go
-
-
-docker-build: docker-build-cache docker-build-persistent docker-build-apigw
-
-docker-build-gobuild:
-	$(info Docker Building gobuild with tag: $(VERSION))
-	docker build --tag $(DOCKER_TAG_GOBUILD) --file dockerfiles/gobuild .
-
-docker-build-cache:
-	$(info Docker Building cache with tag: $(VERSION))
-	docker build --build-arg SERVICE_NAME=cache --tag $(DOCKER_TAG_CACHE) --file dockerfiles/worker .
-
-docker-build-persistent:
-	$(info Docker Building persistent with tag: $(VERSION))
-	docker build --build-arg SERVICE_NAME=persistent --tag $(DOCKER_TAG_PERSISTENT) --file dockerfiles/worker .
-
+#### Docker build
+docker-build-non-pkcs11-containers: docker-build-cache docker-build-persistent docker-build-apigw docker-build-validator
+docker-build-sectigo: docker-build-non-pkcs11-containers docker-build-sealer-sectigo
+docker-build-softhsm: docker-build-non-pkcs11-containers docker-build-sealer-softhsm
 
 docker-build-apigw:
 	$(info Docker building apigw with tag: $(VERSION))
-	docker build --build-arg SERVICE_NAME=apigw --build-arg VERSION=$(VERSION) --tag $(DOCKER_TAG_APIGW) --file dockerfiles/worker .
+	docker build --build-arg SERVICE_NAME=apigw --build-arg VERSION=$(VERSION) --tag $(DOCKER_TAG_APIGW) --file docker/worker .
 
-docker-push-gobuild:
-	$(info Pushing docker images)
-	docker push $(DOCKER_TAG_GOBUILD)
+docker-build-sealer-sectigo:
+	$(info building docker image $(DOCKER_TAG_SEALER_SECTIGO) )
+	docker build --tag $(DOCKER_TAG_SEALER_SECTIGO) --file docker/sealer/sectigo/Dockerfile .
 
-docker-push-cache:
-	$(info Pushing docker images)
-	docker push $(DOCKER_TAG_CACHE)
+docker-build-sealer-softhsm:
+	$(info building docker image $(DOCKER_TAG_SEALER_SOFTHSM) )
+	docker build --tag $(DOCKER_TAG_SEALER_SOFTHSM) --file docker/sealer/softhsm/Dockerfile .
 
-docker-push-persistent:
+docker-build-validator:
+	$(info building docker image $(DOCKER_TAG_VALIDATOR) )
+	docker build --tag $(DOCKER_TAG_VALIDATOR) --file docker/validator/Dockerfile .
+
+docker-build-gobuild:
+	$(info Docker Building gobuild with tag: $(VERSION))
+	docker build --tag $(DOCKER_TAG_GOBUILD) --file docker/gobuild .
+
+#### Docker push
+docker-push: docker-push-cache docker-push-persistent docker-push-apigw docker-push-sealer-usb docker-push-validator
 	$(info Pushing docker images)
-	docker push $(DOCKER_TAG_PERSISTENT)
 
 docker-push-apigw:
 	$(info Pushing docker images)
 	docker push $(DOCKER_TAG_APIGW)
 
-docker-push: docker-push-cache docker-push-persistent docker-push-apigw
+docker-push-sealer-softhsm:
+	$(info Pushing docker image)
+	docker push $(DOCKER_TAG_SEALER_SOFTHSM)
+
+docker-push-sealer-sectigo:
+	$(info Pushing docker image)
+	docker push $(DOCKER_TAG_SEALER_SECTIGO)
+
+docker-push-validator:
+	$(info Pushing docker image)
+	docker push $(DOCKER_TAG_VALIDATOR)
+
+docker-push-gobuild:
 	$(info Pushing docker images)
+	docker push $(DOCKER_TAG_GOBUILD)
+
 
 docker-tag-apigw:
 	$(info Tagging docker images)
-	docker tag $(DOCKER_TAG_APIGW) docker.sunet.se/dc4eu/apigw:$(NEWTAG)
+	docker tag $(DOCKER_TAG_APIGW) docker.sunet.se/eduseal/apigw:$(NEWTAG)
 
 docker-tag-verifier:
 	$(info Tagging docker images)
-	docker tag $(DOCKER_TAG_VERIFIER) docker.sunet.se/dc4eu/verifier:$(NEWTAG)
+	docker tag $(DOCKER_TAG_VERIFIER) docker.sunet.se/eduseal/verifier:$(NEWTAG)
 
 docker-tag-cache:
 	$(info Tagging docker images)
-	docker tag $(DOCKER_TAG_CACHE) docker.sunet.se/dc4eu/cache:$(NEWTAG)
+	docker tag $(DOCKER_TAG_CACHE) docker.sunet.se/eduseal/cache:$(NEWTAG)
 
 docker-tag-persistent:
 	$(info Tagging docker images)
-	docker tag $(DOCKER_TAG_PERSISTENT) docker.sunet.se/dc4eu/persistent:$(NEWTAG)
+	docker tag $(DOCKER_TAG_PERSISTENT) docker.sunet.se/eduseal/persistent:$(NEWTAG)
 
 docker-tag: docker-tag-apigw docker-tag-cache docker-tag-persistent
 	$(info Tagging docker images)
@@ -156,11 +152,25 @@ clean_redis:
 ci_build: docker-build docker-push
 	$(info CI Build)
 
-proto: proto-status
-
+proto: proto-status proto-sealer proto-validator
 
 proto-status:
 	protoc --proto_path=./proto/ --go-grpc_opt=module=eduseal --go_opt=module=eduseal --go_out=. --go-grpc_out=. ./proto/v1-status-model.proto 
+
+proto-sealer:
+	protoc --proto_path=./proto/ --go-grpc_opt=module=eduseal --go_opt=module=eduseal --go_out=. --go-grpc_out=. ./proto/v1-sealer.proto 
+
+proto-validator:
+	protoc --proto_path=./proto/ --go-grpc_opt=module=eduseal --go_opt=module=eduseal --go_out=. --go-grpc_out=. ./proto/v1-validator.proto 
+
+proto-python: proto-sealer-python proto-validator-python
+
+proto-sealer-python:
+	python -m grpc_tools.protoc --proto_path=./proto/ --python_out=./src/eduseal/sealer --grpc_python_out=./src/eduseal/sealer ./proto/v1-sealer.proto
+
+proto-validator-python:
+	python -m grpc_tools.protoc --proto_path=./proto/ --python_out=./src/eduseal/validator --grpc_python_out=./src/eduseal/validator ./proto/v1-validator.proto
+
 
 swagger: swagger-apigw swagger-fmt
 
@@ -182,7 +192,6 @@ install-tools:
 	go install github.com/swaggo/swag/cmd/swag@latest && \
 	go install google.golang.org/protobuf/cmd/protoc-gen-go@latest && \
     go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
-
 
 clean-apt-cache:
 	$(info Cleaning apt cache)

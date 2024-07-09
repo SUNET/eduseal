@@ -2,59 +2,58 @@
 common:
   mongo:
     uri: mongodb://mongo:27017
+    disable: true
   production: false
-  basic_auth:
-    ladok: xyz
   tracing:
     addr: jaeger:4318
     type: jaeger
-  queues:
-    simple_queue:
-      eduseal_sign:
-        name: eduseal_sign
-      eduseal_add_signed:
-        name: eduseal_add_signed
-      eduseal_del_signed:
-        name: eduseal_del_signed
-      eduseal_validate:
-        name: eduseal_validate
-      eduseal_persistent_save:
-        name: eduseal_persistent_save
-  key_value:
-    db: 3
-    addr: redis:6379
+  sealer_nodes:
+    - sealer_1:50051
+    - sealer_2:50051
+  sealer_service_name: sealer.eduseal.docker
+  validator_nodes:
+    - validator_1:50051
+    - validator_2:50051
+  validator_service_name: validator.eduseal.docker
+  root_ca_path: /etc/ssl/certs/eduseal_root_CA.crt
+  redict:
+    nodes:
+     # - redis:6379
+      - kv-test-1.eduseal.sunet.se:6379
+      - kv-test-1.eduseal.sunet.se:6380
+      - kv-test-1.eduseal.sunet.se:6381
+      - kv-test-2.eduseal.sunet.se:6379
+      - kv-test-2.eduseal.sunet.se:6380
+      - kv-test-2.eduseal.sunet.se:6381
+      - kv-test-3.eduseal.sunet.se:6379
+      - kv-test-3.eduseal.sunet.se:6380
+      - kv-test-3.eduseal.sunet.se:6381
     password: test-password
-  qr:
-    base_url: "https://deutsche-rentenversicherung.de"
-    recovery_level: 2
-    size: 256
-
-issuer:
-  api_server:
-    addr: :8080
-  rpc_server:
-    addr: :8090
-  http_proxy:
-  log:
-    level:
-  datastore:
-    addr: datastore:8080
-  
-cache:
-  api_server:
-    addr: :8080
-
-persistent:
-  api_server:
-    addr: :8080
 
 apigw:
   api_server:
-    addr: :8080
+    addr: :443
+    tls:
+      enabled: true
+      cert_file_path: /etc/ssl/private/apigw.pem
+      key_file_path: /etc/ssl/private/apigw.key
+  client_cert:
+      cert_file_path: /etc/ssl/certs/apigw.crt
+      key_file_path: /etc/ssl/private/apigw.key
+      root_ca_path: /etc/ssl/certs/eduseal_root_CA.crt
 
-py_pdfsigner:
-  sign_queue_name: sign
-  add_signed_queue_name: add_signed
+  jwt_auth:
+    enabled: false
+    access:
+      "860223": eduseal-test
+    jwk_url: "https://auth-test.sunet.se/.well-known/jwks.json"
+
+sealer_1:
+  grpc_server:
+    addr: "sealer_1:50051"
+    tls_enabled: true
+    private_key_path: "/etc/ssl/private/sealer_1.key"
+    certificate_chain_path: "/etc/ssl/private/sealer_1.pem"
   pkcs11:
     pin: "1234"
     module: /usr/lib/softhsm/libsofthsm2.so
@@ -62,10 +61,6 @@ py_pdfsigner:
     key_label: test_key_label
     cert_label: test_cert_label
     #slot: 0
-  redis:
-    host: "redis"
-    port: 6379
-    db: 3
   metadata:
     location: "Stockholm"
     reason: "Future validation"
@@ -73,10 +68,38 @@ py_pdfsigner:
     contact_info: "info@sunet.se"
     field_name: "Signature1"
 
-py_pdfvalidator:
-  validate_queue_name: validate
-  trust_root_folder: "/opt/sunet/pki"
-  redis:
-    host: "redis"
-    port: 6379
-    db: 3
+sealer_2:
+  grpc_server:
+    addr: "sealer_2:50051"
+    tls_enabled: true
+    private_key_path: "/etc/ssl/private/sealer_2.key"
+    certificate_chain_path: "/etc/ssl/private/sealer_2.pem"
+  pkcs11:
+    pin: "1234"
+    module: /usr/lib/softhsm/libsofthsm2.so
+    label: test_label
+    key_label: test_key_label
+    cert_label: test_cert_label
+    #slot: 0
+  metadata:
+    location: "Stockholm"
+    reason: "Future validation"
+    name: "SUNET/Vetenskapsrådet"
+    contact_info: "info@sunet.se"
+    field_name: "Signature1"
+
+validator_1:
+  grpc_server:
+    addr: "validator_1:50051"
+    tls_enabled: true
+    private_key_path: "/etc/ssl/private/validator_1.key"
+    certificate_chain_path: "/etc/ssl/private/validator_1.pem"
+  validation_certificates_path: "/validation_certificates"
+
+validator_2:
+  grpc_server:
+    addr: "validator_2:50051"
+    tls_enabled: true
+    private_key_path: "/etc/ssl/private/validator_2.key"
+    certificate_chain_path: "/etc/ssl/private/validator_2.pem"
+  validation_certificates_path: "/validation_certificates"

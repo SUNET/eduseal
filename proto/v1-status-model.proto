@@ -4,7 +4,7 @@ package v1.status;
 
 import "google/protobuf/timestamp.proto";
 
-option go_package = "eduseal/internal/gen/status/apiv1.status";
+option go_package = "eduseal/internal/gen/status/v1_status";
 
 
 message StatusRequest {}
@@ -33,6 +33,7 @@ message BuildVariables {
     string go_version = 4;
     string go_arch = 5;
     string version = 6;
+    string service_name = 7;
 }
 
 message StatusProbeStore {

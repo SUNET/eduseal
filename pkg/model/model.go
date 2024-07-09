@@ -1,16 +1,11 @@
 package model
 
-import "time"
-
-// Meta is a generic type for metadata
-type Meta struct {
-	UploadID     string    `json:"upload_id" bson:"upload_id"`
-	Timestamp    time.Time `json:"timestamp" bson:"timestamp"`
-	DocumentType string    `json:"document_type"`
-}
-
-// Response is a generic type for responses
-type Response struct {
-	Data  any `json:"data"`
-	Error any `json:"error"`
+// Document is the general document type
+type Document struct {
+	TransactionID string `json:"transaction_id" bson:"transaction_id" redis:"transaction_id"`
+	Data          string `json:"data" bson:"base64_data" redis:"data"`
+	SealerBackend string `json:"sealer_backend" bson:"sealer_backend" redis:"sealer_backend"`
+	Message       string `json:"message,omitempty" bson:"message" redis:"message"`
+	RevokedAt     int64  `json:"revoked_at,omitempty" bson:"revoked_at" redis:"revoke_at"`
+	Reason        string `json:"reason,omitempty" bson:"reason" redis:"reason"`
 }

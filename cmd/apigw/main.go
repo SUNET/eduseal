@@ -5,8 +5,8 @@ import (
 	"eduseal/internal/apigw/apiv1"
 	"eduseal/internal/apigw/db"
 	"eduseal/internal/apigw/httpserver"
-	"eduseal/internal/apigw/simplequeue"
 	"eduseal/pkg/configuration"
+	"eduseal/pkg/grpcclient"
 	"eduseal/pkg/kvclient"
 	"eduseal/pkg/logger"
 	"eduseal/pkg/trace"
@@ -19,8 +19,6 @@ import (
 type service interface {
 	Close(ctx context.Context) error
 }
-
-var GitCommit string
 
 func main() {
 	var wg sync.WaitGroup
@@ -42,24 +40,24 @@ func main() {
 		panic(err)
 	}
 
-	kvClient, err := kvclient.New(ctx, cfg, tracer, log.New("kvClient"))
+	grpcClient, err := grpcclient.New(ctx, cfg, log.New("grpcclient"))
+	if err != nil {
+		panic(err)
+	}
+
+	kvClient, err := kvclient.New(ctx, cfg, tracer, log.New("kvclient"))
 	services["kvClient"] = kvClient
 	if err != nil {
 		panic(err)
 	}
+
 	dbService, err := db.New(ctx, cfg, tracer, log.New("db"))
 	services["dbService"] = dbService
 	if err != nil {
 		panic(err)
 	}
 
-	simpleQueueService, err := simplequeue.New(ctx, kvClient, tracer, cfg, log.New("queue"))
-	services["queueService"] = simpleQueueService
-	if err != nil {
-		panic(err)
-	}
-
-	apiv1Client, err := apiv1.New(ctx, kvClient, dbService, simpleQueueService, tracer, cfg, log.New("apiv1"))
+	apiv1Client, err := apiv1.New(ctx, kvClient, grpcClient, dbService, tracer, cfg, log.New("apiv1"))
 	if err != nil {
 		panic(err)
 	}

@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package v1.validator;
+
+option go_package = "eduseal/internal/gen/validator/v1_validator";
+
+// Validator validates documents
+service Validator {
+    rpc Validate (ValidateRequest) returns (ValidateReply) {}
+}
+
+// ValidateRequest provides validation data
+message ValidateRequest {
+   string data = 1;
+}
+
+
+// ValidateReply return validation data
+message ValidateReply {
+    string validation_backend = 1;
+    bool intact_signature = 2;
+    bool valid_signature = 3;
+    string transaction_id = 4;
+    string error = 5;
+}
