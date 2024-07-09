@@ -2,11 +2,11 @@ package kvclient
 
 import (
 	"context"
+	"eduseal/pkg/helpers"
+	"eduseal/pkg/model"
 	"fmt"
 	"time"
-	"eduseal/pkg/helpers"
 
-	"github.com/masv3971/gosunetca/types"
 	"go.opentelemetry.io/otel/codes"
 )
 
@@ -25,7 +25,7 @@ func (d Doc) signedKey(transactionID string) string {
 }
 
 // SaveSigned saves the signed document and the timestamp when it was signed
-func (d *Doc) SaveSigned(ctx context.Context, doc *types.Document) error {
+func (d *Doc) SaveSigned(ctx context.Context, doc *model.Document) error {
 	ctx, span := d.client.tp.Start(ctx, "kv:SaveSigned")
 	defer span.End()
 
@@ -33,7 +33,13 @@ func (d *Doc) SaveSigned(ctx context.Context, doc *types.Document) error {
 		span.SetStatus(codes.Error, helpers.ErrNoTransactionID.Error())
 		return helpers.ErrNoTransactionID
 	}
-	if err := d.client.RedisClient.HSet(ctx, d.signedKey(doc.TransactionID), doc).Err(); err != nil {
+
+	if err := d.client.RedictCC.Expire(ctx, d.signedKey(doc.TransactionID), 1*time.Hour).Err(); err != nil {
+		span.SetStatus(codes.Error, err.Error())
+		return err
+	}
+
+	if err := d.client.RedictCC.HSet(ctx, d.signedKey(doc.TransactionID), doc).Err(); err != nil {
 		span.SetStatus(codes.Error, err.Error())
 		return err
 	}
@@ -41,12 +47,12 @@ func (d *Doc) SaveSigned(ctx context.Context, doc *types.Document) error {
 }
 
 // GetSigned returns the signed document and the timestamp when it was signed
-func (d *Doc) GetSigned(ctx context.Context, transactionID string) (*types.Document, error) {
+func (d *Doc) GetSigned(ctx context.Context, transactionID string) (*model.Document, error) {
 	ctx, span := d.client.tp.Start(ctx, "kv:GetSigned")
 	defer span.End()
 
-	dest := &types.Document{}
-	if err := d.client.RedisClient.HGetAll(ctx, d.signedKey(transactionID)).Scan(dest); err != nil {
+	dest := &model.Document{}
+	if err := d.client.RedictCC.HGetAll(ctx, d.signedKey(transactionID)).Scan(dest); err != nil {
 		span.SetStatus(codes.Error, err.Error())
 		return nil, err
 	}
@@ -58,7 +64,7 @@ func (d *Doc) ExistsSigned(ctx context.Context, transactionID string) bool {
 	ctx, span := d.client.tp.Start(ctx, "kv:ExistsSigned")
 	defer span.End()
 
-	return d.client.RedisClient.Exists(ctx, d.signedKey(transactionID)).Val() == 1
+	return d.client.RedictCC.Exists(ctx, d.signedKey(transactionID)).Val() == 1
 }
 
 // DelSigned deletes the signed document
@@ -68,14 +74,5 @@ func (d *Doc) DelSigned(ctx context.Context, transactionID string) error {
 
 	d.client.log.Debug("Deleting signed document", "transactionID", transactionID)
 
-	return d.client.RedisClient.HDel(ctx, d.signedKey(transactionID), "base64_data", "ts").Err()
-}
-
-// AddTTLSigned marks the signed document for deletion
-func (d *Doc) AddTTLSigned(ctx context.Context, transactionID string) error {
-	ctx, span := d.client.tp.Start(ctx, "kv:AddTTLSigned")
-	defer span.End()
-
-	expTime := time.Duration(d.client.cfg.Common.KeyValue.PDF.KeepSignedDuration)
-	return d.client.RedisClient.Expire(ctx, d.signedKey(transactionID), expTime*time.Second).Err()
+	return d.client.RedictCC.HDel(ctx, d.signedKey(transactionID), "base64_data", "ts").Err()
 }

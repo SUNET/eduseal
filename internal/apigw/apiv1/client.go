@@ -3,8 +3,8 @@ package apiv1
 import (
 	"context"
 	"eduseal/internal/apigw/db"
-	"eduseal/pkg/etcdclient"
 	"eduseal/pkg/grpcclient"
+	"eduseal/pkg/kvclient"
 	"eduseal/pkg/logger"
 	"eduseal/pkg/model"
 	"eduseal/pkg/trace"
@@ -20,12 +20,12 @@ type Client struct {
 	db         *db.Service
 	log        *logger.Log
 	tp         *trace.Tracer
-	kv         *etcdclient.Client
+	kv         *kvclient.Client
 	grpcClient *grpcclient.Client
 }
 
 // New creates a new instance of the public api
-func New(ctx context.Context, kv *etcdclient.Client, grpcClient *grpcclient.Client, db *db.Service, tp *trace.Tracer, cfg *model.Cfg, logger *logger.Log) (*Client, error) {
+func New(ctx context.Context, kv *kvclient.Client, grpcClient *grpcclient.Client, db *db.Service, tp *trace.Tracer, cfg *model.Cfg, logger *logger.Log) (*Client, error) {
 	c := &Client{
 		cfg:        cfg,
 		db:         db,

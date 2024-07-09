@@ -54,6 +54,7 @@ EOF
     fi
 
     if [ ! -f ${pki_dir}/${service_name}.ext ]; then
+
 	cat > ${pki_dir}/${service_name}.ext <<EOF
 # v3.ext
 authorityKeyIdentifier=keyid,issuer
@@ -65,6 +66,19 @@ subjectAltName = @alt_names
 DNS.1 = ${service_name}.eduseal.docker
 DNS.2 = ${service_name}
 EOF
+    if [ ${service_name} = "sealer_1" ] || [ ${service_name} = "sealer_2" ]; then
+        grpc_dns="sealer.eduseal.docker"
+        cat >> ${pki_dir}/${service_name}.ext <<EOF
+DNS.3 = sealer.eduseal.docker
+EOF
+    fi
+
+    if [ ${service_name} = "validator_1" ] || [ ${service_name} = "validator_2" ]; then
+        grpc_dns="validator.eduseal.docker"
+        cat >> ${pki_dir}/${service_name}.ext <<EOF
+DNS.3 = validator.eduseal.docker
+EOF
+    fi
 	ext_generated=1
     fi
 

@@ -14,7 +14,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0fv1-sealer.proto\x12\tv1.sealer\"2\n\x0bSealRequest\x12\x16\n\x0etransaction_id\x18\x01 \x01(\t\x12\x0b\n\x03pdf\x18\x02 \x01(\t\"h\n\tSealReply\x12\x14\n\x0cservice_name\x18\x01 \x01(\t\x12\x16\n\x0etransaction_id\x18\x02 \x01(\t\x12\x0b\n\x03pdf\x18\x03 \x01(\t\x12\r\n\x05\x65rror\x18\x04 \x01(\t\x12\x11\n\tcreate_ts\x18\x05 \x01(\x03\x32@\n\x06Sealer\x12\x36\n\x04Seal\x12\x16.v1.sealer.SealRequest\x1a\x14.v1.sealer.SealReply\"\x00\x42\'Z%eduseal/internal/gen/sealer/v1_sealerb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0fv1-sealer.proto\x12\tv1.sealer\"3\n\x0bSealRequest\x12\x16\n\x0etransaction_id\x18\x01 \x01(\t\x12\x0c\n\x04\x64\x61ta\x18\x02 \x01(\t\"X\n\tSealReply\x12\x16\n\x0esealer_backend\x18\x01 \x01(\t\x12\x16\n\x0etransaction_id\x18\x02 \x01(\t\x12\x0c\n\x04\x64\x61ta\x18\x03 \x01(\t\x12\r\n\x05\x65rror\x18\x04 \x01(\t2@\n\x06Sealer\x12\x36\n\x04Seal\x12\x16.v1.sealer.SealRequest\x1a\x14.v1.sealer.SealReply\"\x00\x42\'Z%eduseal/internal/gen/sealer/v1_sealerb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -23,9 +23,9 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'Z%eduseal/internal/gen/sealer/v1_sealer'
   _globals['_SEALREQUEST']._serialized_start=30
-  _globals['_SEALREQUEST']._serialized_end=80
-  _globals['_SEALREPLY']._serialized_start=82
-  _globals['_SEALREPLY']._serialized_end=186
-  _globals['_SEALER']._serialized_start=188
-  _globals['_SEALER']._serialized_end=252
+  _globals['_SEALREQUEST']._serialized_end=81
+  _globals['_SEALREPLY']._serialized_start=83
+  _globals['_SEALREPLY']._serialized_end=171
+  _globals['_SEALER']._serialized_start=173
+  _globals['_SEALER']._serialized_end=237
 # @@protoc_insertion_point(module_scope)

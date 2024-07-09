@@ -1,18 +1,4 @@
 ---
-version: "3.7"
-
-x-variables:
-  flag_initial_cluster_token: &flag_initial_cluster_token '--initial-cluster-token=mys3cr3ttok3n'
-  flag_initial_cluster: &flag_initial_cluster '--initial-cluster=etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380,etcd4=http://etcd4:2380,etcd5=http://etcd5:2380'
-  flag_listen_peer_urls: &flag_listen_peer_urls '--listen-peer-urls=http://0.0.0.0:2380'
-  flag_listen_client_urls: &flag_listen_client_urls '--listen-client-urls=http://0.0.0.0:2379'
-  flag_heartbeat_interval: &flag_heartbeat_interval '--heartbeat-interval=250'
-  flag_election_timeout: &flag_election_timeout '--election-timeout=1250'
-  common_settings: &common_settings
-    image: quay.io/coreos/etcd:v3.5.13
-    entrypoint: /usr/local/bin/etcd
-    ports:
-      - 2379
 
 services:
   apigw:
@@ -22,8 +8,12 @@ services:
     volumes:
       - ./config.yaml:/config.yaml:ro
       - /var/log/sunet:/var/log/sunet
+      - ./developer_tools/pki/rootCA.crt:/etc/ssl/certs/eduseal_root_CA.crt:ro
+      - ./developer_tools/pki/apigw.crt:/etc/ssl/certs/apigw.crt:ro
+      - ./developer_tools/pki/apigw.key:/etc/ssl/private/apigw.key:ro
+      - ./developer_tools/pki/apigw.pem:/etc/ssl/private/apigw.pem:ro
     depends_on:
-      - mongo
+      #- mongo
       - sealer_1
       - sealer_2
       - validator_1
@@ -39,43 +29,21 @@ services:
     environment:
       - "EDUSEAL_CONFIG_YAML=config.yaml"
       - "EDUSEAL_SERVICE_NAME=apigw"
-      - "GRPC_GO_LOG_VERBOSITY_LEVEL=99"
-      - "GRPC_GO_LOG_SEVERITY_LEVEL=info"
-
-  cache:
-    container_name: "eduseal_dev_cache"
-    image: docker.sunet.se/eduseal/cache:latest
-    restart: always
-    volumes:
-      - ./config.yaml:/config.yaml:ro
-    networks:
-      eduseal-dev-net:
-        ipv4_address: 172.20.50.10
-    environment:
-      - "EDUSEAL_CONFIG_YAML=config.yaml"
-
-  persistent:
-    container_name: "eduseal_dev_persistent"
-    image: docker.sunet.se/eduseal/persistent:latest
-    restart: always
-    volumes:
-      - ./config.yaml:/config.yaml:ro
-      - mongo
-    networks:
-      eduseal-dev-net:
-        ipv4_address: 172.20.50.12
-    environment:
-      - "EDUSEAL_CONFIG_YAML=config.yaml"
+    # - "GRPC_GO_LOG_VERBOSITY_LEVEL=99"
+    # - "GRPC_GO_LOG_SEVERITY_LEVEL=info"
 
   sealer_1:
     container_name: "eduseal_dev_sealer_1"
-    image: docker.sunet.se/eduseal/sealer_softhsm_grpc:latest
+    image: docker.sunet.se/eduseal/sealer_softhsm:latest
     restart: always
     volumes:
       - ./config.yaml:/config.yaml:ro
       - /var/log/sunet:/var/log/sunet
-      - ./developer_tools/pki/sealer_1.crt:/etc/ssl/certs/sealer.crt:ro
-      - ./developer_tools/pki/sealer_1.key:/etc/ssl/private/sealer.key:ro
+      - ./developer_tools/pki/sealer_1.key:/etc/ssl/private/sealer_1.key:ro
+      - ./developer_tools/pki/sealer_1.pem:/etc/ssl/private/sealer_1.pem:ro
+      - ./developer_tools/pki/rootCA.crt:/etc/ssl/certs/eduseal_root_CA.crt:ro
+      - ./developer_tools/pki/document_sealing_private.der:/opt/sunet/pki/sealing.der:ro
+      - ./developer_tools/pki/document_sealing.crt:/opt/sunet/pki/sealing.crt:ro
     expose:
       - 50051
     networks:
@@ -84,16 +52,20 @@ services:
     environment:
       - "EDUSEAL_CONFIG_YAML=config.yaml"
       - "EDUSEAL_SERVICE_NAME=sealer_1"
+      - "EDUSEAL_CONFIG_NAMESPACE=sealer_1"
 
   sealer_2:
     container_name: "eduseal_dev_sealer_2"
-    image: docker.sunet.se/eduseal/sealer_softhsm_grpc:latest
+    image: docker.sunet.se/eduseal/sealer_softhsm:latest
     restart: always
     volumes:
       - ./config.yaml:/config.yaml:ro
       - /var/log/sunet:/var/log/sunet
-      - ./developer_tools/pki/sealer_2.crt:/etc/ssl/certs/sealer.crt:ro
-      - ./developer_tools/pki/sealer_2.key:/etc/ssl/private/sealer.key:ro
+      - ./developer_tools/pki/sealer_2.key:/etc/ssl/private/sealer_2.key:ro
+      - ./developer_tools/pki/sealer_2.pem:/etc/ssl/private/sealer_2.pem:ro
+      - ./developer_tools/pki/rootCA.crt:/etc/ssl/certs/eduseal_root_CA.crt:ro
+      - ./developer_tools/pki/document_sealing_private.der:/opt/sunet/pki/sealing.der:ro
+      - ./developer_tools/pki/document_sealing.crt:/opt/sunet/pki/sealing.crt:ro
     expose:
       - 50051
     networks:
@@ -102,6 +74,7 @@ services:
     environment:
       - "EDUSEAL_CONFIG_YAML=config.yaml"
       - "EDUSEAL_SERVICE_NAME=sealer_2"
+      - "EDUSEAL_CONFIG_NAMESPACE=sealer_2"
 
   validator_1:
     container_name: "eduseal_dev_validator_1"
@@ -110,7 +83,9 @@ services:
     volumes:
       - ./config.yaml:/config.yaml:ro
       - /var/log/sunet:/var/log/sunet
-      - ./validation_certificates/rootCA.crt:/validation_certificates/rootCA.crt:ro
+      - ./developer_tools/pki/validator_1.key:/etc/ssl/private/validator_1.key:ro
+      - ./developer_tools/pki/validator_1.pem:/etc/ssl/private/validator_1.pem:ro
+      - ./developer_tools/pki/rootCA.crt:/validation_certificates/rootCA.crt:ro
     expose:
       - 50051
     networks:
@@ -119,6 +94,7 @@ services:
     environment:
       - "EDUSEAL_CONFIG_YAML=config.yaml"
       - "EDUSEAL_SERVICE_NAME=validator_1"
+      - "EDUSEAL_CONFIG_NAMESPACE=validator_1"
 
   validator_2:
     container_name: "eduseal_dev_validator_2"
@@ -127,7 +103,9 @@ services:
     volumes:
       - ./config.yaml:/config.yaml:ro
       - /var/log/sunet:/var/log/sunet
-      - ./validation_certificates/rootCA.crt:/validation_certificates/rootCA.crt:ro
+      - ./developer_tools/pki/validator_2.key:/etc/ssl/private/validator_2.key:ro
+      - ./developer_tools/pki/validator_2.pem:/etc/ssl/private/validator_2.pem:ro
+      - ./developer_tools/pki/rootCA.crt:/validation_certificates/rootCA.crt:ro
     expose:
       - 50051
     networks:
@@ -136,18 +114,33 @@ services:
     environment:
       - "EDUSEAL_CONFIG_YAML=config.yaml"
       - "EDUSEAL_SERVICE_NAME=validator_2"
+      - "EDUSEAL_CONFIG_NAMESPACE=validator_2"
 
-  mongo:
-    image: mongo:4.0.10
-    container_name: "eduseal_dev_mongo"
-    restart: always
-    expose:
-      - 27017
+  redis:
+    image: redis
+    container_name: "eduseal_dev_redis"
+    command: [ "redis-server", "/etc/redis/redis.conf" ]
     volumes:
-      - mongo_data:/data
+      - /redis_data:/data
+      - /config/redis-1.conf:/etc/redis/redis.conf
+    expose:
+      - 6371
+      - 16379
     networks:
       eduseal-dev-net:
-        ipv4_address: 172.20.50.26
+        ipv4_address: 172.20.50.21
+
+  #mongo:
+  #  image: mongo:4.0.10
+  #  container_name: "eduseal_dev_mongo"
+  #  restart: always
+  #  expose:
+  #    - 27017
+  #  volumes:
+  #    - mongo_data:/data
+  #  networks:
+  #    eduseal-dev-net:
+  #      ipv4_address: 172.20.50.26
 
   jaeger:
     image: jaegertracing/all-in-one:latest
@@ -163,101 +156,6 @@ services:
     environment:
       - "COLLECTOR_OTLP_ENABLED=true"
 
-  etcd1:
-    <<: *common_settings
-    command:
-      - '--name=etcd1'
-      - '--initial-advertise-peer-urls=http://etcd1:2380'
-      - '--advertise-client-urls=http://etcd1:2379'
-      - '--initial-cluster-state=new'
-      - *flag_heartbeat_interval
-      - *flag_election_timeout
-      - *flag_listen_peer_urls
-      - *flag_listen_client_urls
-      - *flag_initial_cluster
-      - *flag_initial_cluster_token
-    networks:
-      eduseal-dev-net:
-        ipv4_address: 172.20.50.31
-    volumes:
-      - etcd1:/etcd_data
-
-  etcd2:
-    <<: *common_settings
-    command:
-      - '--name=etcd2'
-      - '--initial-advertise-peer-urls=http://etcd2:2380'
-      - '--advertise-client-urls=http://etcd2:2379'
-      - '--initial-cluster-state=new'
-      - *flag_heartbeat_interval
-      - *flag_listen_peer_urls
-      - *flag_listen_client_urls
-      - *flag_election_timeout
-      - *flag_initial_cluster
-      - *flag_initial_cluster_token
-    networks:
-      eduseal-dev-net:
-        ipv4_address: 172.20.50.32
-    volumes:
-      - etcd2:/etcd_data
-
-  etcd3:
-    <<: *common_settings
-    command:
-      - '--name=etcd3'
-      - '--initial-advertise-peer-urls=http://etcd3:2380'
-      - '--advertise-client-urls=http://etcd3:2379'
-      - '--initial-cluster-state=new'
-      - *flag_heartbeat_interval
-      - *flag_election_timeout
-      - *flag_listen_peer_urls
-      - *flag_listen_client_urls
-      - *flag_initial_cluster
-      - *flag_initial_cluster_token
-    networks:
-      eduseal-dev-net:
-        ipv4_address: 172.20.50.33
-    volumes:
-      - etcd3:/etcd_data
-
-  etcd4:
-    <<: *common_settings
-    command:
-      - '--name=etcd4'
-      - '--initial-advertise-peer-urls=http://etcd4:2380'
-      - '--advertise-client-urls=http://etcd4:2379'
-      - '--initial-cluster-state=new'
-      - *flag_heartbeat_interval
-      - *flag_election_timeout
-      - *flag_listen_peer_urls
-      - *flag_listen_client_urls
-      - *flag_initial_cluster
-      - *flag_initial_cluster_token
-    networks:
-      eduseal-dev-net:
-        ipv4_address: 172.20.50.34
-    volumes:
-      - etcd4:/etcd_data
-
-  etcd5:
-    <<: *common_settings
-    command:
-      - '--name=etcd5'
-      - '--initial-advertise-peer-urls=http://etcd5:2380'
-      - '--advertise-client-urls=http://etcd5:2379'
-      - '--initial-cluster-state=new'
-      - *flag_heartbeat_interval
-      - *flag_election_timeout
-      - *flag_listen_peer_urls
-      - *flag_listen_client_urls
-      - *flag_initial_cluster
-      - *flag_initial_cluster_token
-    networks:
-      eduseal-dev-net:
-        ipv4_address: 172.20.50.35
-    volumes:
-      - etcd5:/etcd_data
-
 networks:
   eduseal-dev-net:
     driver: bridge
@@ -269,8 +167,4 @@ networks:
         - subnet: 172.20.50.0/24
 volumes:
   mongo_data:
-  etcd1:
-  etcd2:
-  etcd3:
-  etcd4:
-  etcd5:
+  redis_data:

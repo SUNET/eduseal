@@ -2,11 +2,13 @@ package kvclient
 
 import (
 	"context"
-	"time"
-	apiv1_status "eduseal/internal/gen/status/apiv1.status"
+	"crypto/x509"
+	"eduseal/internal/gen/status/v1_status"
 	"eduseal/pkg/logger"
 	"eduseal/pkg/model"
 	"eduseal/pkg/trace"
+	"os"
+	"time"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -15,13 +17,21 @@ import (
 
 // Client holds the kv object
 type Client struct {
-	RedisClient *redis.Client
-	cfg         *model.Cfg
-	log         *logger.Log
-	probeStore  *apiv1_status.StatusProbeStore
-	tp          *trace.Tracer
+	RedictCC     *redis.ClusterClient
+	cfg          *model.Cfg
+	log          *logger.Log
+	probeStore   *v1_status.StatusProbeStore
+	tp           *trace.Tracer
+	statusResult statusResults
+	statusTick   *time.Ticker
 
 	Doc *Doc
+}
+type statusResults map[string]statusResult
+
+type statusResult struct {
+	healthy bool
+	leader  bool
 }
 
 // New creates a new instance of kv
@@ -29,15 +39,29 @@ func New(ctx context.Context, cfg *model.Cfg, tracer *trace.Tracer, log *logger.
 	c := &Client{
 		cfg:        cfg,
 		log:        log,
-		probeStore: &apiv1_status.StatusProbeStore{},
+		probeStore: &v1_status.StatusProbeStore{},
 		tp:         tracer,
+		statusTick: time.NewTicker(time.Second * 10),
 	}
 
-	c.RedisClient = redis.NewClient(&redis.Options{
-		Addr:     cfg.Common.KeyValue.Addr,
-		Password: cfg.Common.KeyValue.Password,
-		DB:       cfg.Common.KeyValue.DB,
-	},
+	//clientCert, err := tls.LoadX509KeyPair(cfg.APIGW.ClientCert.CertFilePath, cfg.APIGW.ClientCert.KeyFilePath)
+	//if err != nil {
+	//	return nil, err
+	//}
+
+	// Load CA cert
+	caCertByte, err := os.ReadFile(cfg.APIGW.ClientCert.RootCAPath)
+	if err != nil {
+		return nil, err
+	}
+	caCertPool := x509.NewCertPool()
+	caCertPool.AppendCertsFromPEM(caCertByte)
+
+	c.RedictCC = redis.NewClusterClient(
+		&redis.ClusterOptions{
+			Addrs:    cfg.Common.Redict.Nodes,
+			Password: cfg.Common.Redict.Password,
+		},
 	)
 
 	c.Doc = &Doc{
@@ -45,24 +69,40 @@ func New(ctx context.Context, cfg *model.Cfg, tracer *trace.Tracer, log *logger.
 		key:    "doc:%s:%s",
 	}
 
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-c.statusTick.C:
+				c.log.Info("Checking status")
+				res, err := c.RedictCC.Ping(ctx).Result()
+				if err != nil {
+					c.log.Error(err, "Error checking status")
+				}
+				c.log.Info("Status", "result", res)
+			}
+		}
+	}()
+
 	c.log.Info("Started")
 
 	return c, nil
 }
 
 // Status returns the status of the database
-func (c *Client) Status(ctx context.Context) *apiv1_status.StatusProbe {
+func (c *Client) Status(ctx context.Context) *v1_status.StatusProbe {
 	if time.Now().Before(c.probeStore.NextCheck.AsTime()) {
 		return c.probeStore.PreviousResult
 	}
-	probe := &apiv1_status.StatusProbe{
+	probe := &v1_status.StatusProbe{
 		Name:          "kv",
 		Healthy:       true,
 		Message:       "OK",
 		LastCheckedTS: timestamppb.Now(),
 	}
 
-	_, err := c.RedisClient.Ping(ctx).Result()
+	_, err := c.RedictCC.Ping(ctx).Result()
 	if err != nil {
 		probe.Message = err.Error()
 		probe.Healthy = false
@@ -75,5 +115,5 @@ func (c *Client) Status(ctx context.Context) *apiv1_status.StatusProbe {
 
 // Close closes the connection to the database
 func (c *Client) Close(ctx context.Context) error {
-	return c.RedisClient.Close()
+	return c.RedictCC.Close()
 }

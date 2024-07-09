@@ -119,7 +119,7 @@ func (s *Service) middlewareJWTAuth(ctx context.Context) gin.HandlerFunc {
 			RefreshUnknownKID: true,
 		}
 
-		jwks, err := keyfunc.Get("https://auth-test.sunet.se/.well-known/jwks.json", options)
+		jwks, err := keyfunc.Get(s.config.APIGW.JWTAuth.JWKURL, options)
 		if err != nil {
 			details := "Faild to create JWKS from resource at the given URL"
 			log.Debug(details)

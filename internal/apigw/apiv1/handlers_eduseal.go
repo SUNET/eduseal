@@ -52,15 +52,22 @@ func (c *Client) PDFSign(ctx context.Context, req *PDFSignRequest) (*PDFSignRepl
 
 	signedDoc, err := c.grpcClient.Sealer.Seal(ctx, transactionID, req.PDF)
 	if err != nil {
+		c.log.Error(err, "gRPC request failed")
 		return nil, err
 	}
 
 	reply := &PDFSignReply{
 		Data: signedDoc,
 	}
+	c.log.Debug("PDFSign", "reply", reply)
 
-	if err := c.kv.Doc.SaveSigned(ctx, signedDoc); err != nil {
+	if err := c.kv.Doc.SaveSigned(ctx, &model.Document{
+		TransactionID: signedDoc.TransactionId,
+		Data:          signedDoc.Data,
+		SealerBackend: signedDoc.SealerBackend,
+	}); err != nil {
 		span.SetStatus(codes.Error, err.Error())
+		c.log.Error(err, "save seald doc failed")
 		return nil, err
 	}
 
@@ -173,15 +180,15 @@ type PDFRevokeReply struct {
 // PDFRevoke is the request to revoke pdf
 //
 //	@Summary		revoke signed pdf
-//	@ID				ladok-pdf-revoke
+//	@ID				pdf-revoke
 //	@Description	revoke a singed pdf
-//	@Tags			ladok
+//	@Tags			eduseal
 //	@Accept			json
 //	@Produce		json
 //	@Success		200				{object}	PDFRevokeReply			"Success"
 //	@Failure		400				{object}	helpers.ErrorResponse	"Bad Request"
 //	@Param			transaction_id	path		string					true	"transaction_id"
-//	@Router			/ladok/pdf/revoke/{transaction_id} [put]
+//	@Router			/pdf/revoke/{transaction_id} [put]
 func (c *Client) PDFRevoke(ctx context.Context, req *PDFRevokeRequest) (*PDFRevokeReply, error) {
 	ctx, span := c.tp.Start(ctx, "apiv1:PDFRevoke")
 	defer span.End()

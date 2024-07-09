@@ -20,8 +20,14 @@ class PKCS11(BaseModel):
     cert_label: Optional[str] = None
     slot: Optional[int] = None
 
+class GRPCServer(BaseModel):
+    addr: str
+    tls_enabled: bool = False
+    private_key_path: Optional[str] = None
+    certificate_chain_path: Optional[str] = None
 
 class CFG(BaseModel):
+    grpc_server: GRPCServer
     pkcs11: PKCS11
     metadata: PdfSignatureMetadata
 
@@ -31,15 +37,15 @@ def parse(log: Logger) -> CFG:
         log.error("no config file env variable found")
         sys.exit(1)
 
-    service_name = os.getenv("EDUSEAL_SERVICE_NAME")
-    if service_name is None:
-        log.error("no service name env variable found")
+    config_namespace = os.getenv("EDUSEAL_CONFIG_NAMESPACE")
+    if config_namespace is None:
+        log.error("no config namespace env variable found")
         sys.exit(1)
 
     try:
         with open(file_name, "r")as f:
              data = yaml.load(f, yaml.FullLoader)
-             cfg = CFG.model_validate(data[service_name])
+             cfg = CFG.model_validate(data[config_namespace])
     except Exception as e:
             log.error(f"open file {file_name} failed, error: {e}")
             sys.exit(1)

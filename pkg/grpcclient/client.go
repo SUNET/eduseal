@@ -7,7 +7,7 @@ import (
 	"fmt"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/resolver"
 )
 
@@ -28,21 +28,19 @@ func New(ctx context.Context, cfg *model.Cfg, log *logger.Log) (*Client, error) 
 	}
 
 	c.Validator = &Validator{
-		client:      c,
-		scheme:      "validator",
-		serviceName: "validator.eduseal.sunet.docker",
+		client: c,
+		scheme: "validator",
 		DNS: map[string][]string{
-			"validator.eduseal.sunet.docker": cfg.Common.ValidatorGRPCHosts,
+			c.cfg.Common.ValidatorServiceName: cfg.Common.ValidatorNodes,
 		},
 	}
 	resolver.Register(c.Validator)
 
 	c.Sealer = &Sealer{
-		client:      c,
-		scheme:      "sealer",
-		serviceName: "sealer.eduseal.sunet.docker",
+		client: c,
+		scheme: "sealer",
 		DNS: map[string][]string{
-			"sealer.eduseal.sunet.docker": cfg.Common.SealerGRPCHosts,
+			c.cfg.Common.SealerServiceName: cfg.Common.SealerNodes,
 		},
 	}
 	resolver.Register(c.Sealer)
@@ -51,10 +49,14 @@ func New(ctx context.Context, cfg *model.Cfg, log *logger.Log) (*Client, error) 
 }
 
 func (c *Client) rrConn(ctx context.Context, scheme, serviceName string) (*grpc.ClientConn, error) {
+	clientTLS, err := credentials.NewClientTLSFromFile(c.cfg.Common.RootCAPath, "")
+	if err != nil {
+		return nil, err
+	}
 	conn, err := grpc.NewClient(
 		fmt.Sprintf("%s:///%s", scheme, serviceName),
 		grpc.WithDefaultServiceConfig(`{"loadBalancingConfig": [{"round_robin":{}}]}`), // This sets the initial balancing policy.
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithTransportCredentials(clientTLS),
 	)
 	if err != nil {
 		//	c.log.Error(err, "Failed to connect to validator")

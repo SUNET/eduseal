@@ -11,13 +11,12 @@ service Sealer {
 
 message SealRequest {
     string transaction_id = 1;
-    string pdf = 2;
+    string data = 2;
 }
 
 message SealReply {
-    string service_name = 1;
+    string sealer_backend = 1;
     string transaction_id = 2;
-    string pdf = 3;
+    string data = 3;
     string error = 4;
-    int64 create_ts = 5;
 }

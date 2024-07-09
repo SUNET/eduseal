@@ -6,8 +6,8 @@ import (
 	"eduseal/internal/apigw/db"
 	"eduseal/internal/apigw/httpserver"
 	"eduseal/pkg/configuration"
-	"eduseal/pkg/etcdclient"
 	"eduseal/pkg/grpcclient"
+	"eduseal/pkg/kvclient"
 	"eduseal/pkg/logger"
 	"eduseal/pkg/trace"
 	"os"
@@ -45,8 +45,8 @@ func main() {
 		panic(err)
 	}
 
-	etcdClient, err := etcdclient.New(ctx, cfg, tracer, log.New("etcdclient"))
-	services["etcdClient"] = etcdClient
+	kvClient, err := kvclient.New(ctx, cfg, tracer, log.New("kvclient"))
+	services["kvClient"] = kvClient
 	if err != nil {
 		panic(err)
 	}
@@ -57,7 +57,7 @@ func main() {
 		panic(err)
 	}
 
-	apiv1Client, err := apiv1.New(ctx, etcdClient, grpcClient, dbService, tracer, cfg, log.New("apiv1"))
+	apiv1Client, err := apiv1.New(ctx, kvClient, grpcClient, dbService, tracer, cfg, log.New("apiv1"))
 	if err != nil {
 		panic(err)
 	}

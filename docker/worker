@@ -24,7 +24,7 @@ ARG SERVICE_NAME
 
 WORKDIR /
 
-RUN apt-get update && apt-get install -y curl procps iputils-ping less netcat-openbsd
+RUN apt-get update && apt-get install -y curl procps iputils-ping less netcat-openbsd dnsutils
 RUN rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /go/src/app/bin/eduseal_${SERVICE_NAME} /eduseal_service
@@ -32,6 +32,6 @@ COPY --from=builder /go/src/app/docs /docs
 
 EXPOSE 8080
 
-HEALTHCHECK --interval=20s --timeout=10s CMD curl --connect-timeout 5 http://localhost:8080/health | grep -q STATUS_OK
+HEALTHCHECK --interval=20s --timeout=10s CMD curl --insecure --connect-timeout 5 https://localhost/health | grep -q STATUS_OK
 
 CMD [ "./eduseal_service" ]

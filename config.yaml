@@ -7,39 +7,53 @@ common:
   tracing:
     addr: jaeger:4318
     type: jaeger
-  etcd:
-    addresses: 
-      - http://etcd1:2379
-      - http://etcd2:2379
-      - http://etcd3:2379
-      - http://etcd4:2379
-      - http://etcd5:2379
-    #username: "test-username"
-    password: test-password
-  sealer_grpc_hosts:
+  sealer_nodes:
     - sealer_1:50051
     - sealer_2:50051
-  validator_grpc_hosts: 
+  sealer_service_name: sealer.eduseal.docker
+  validator_nodes:
     - validator_1:50051
     - validator_2:50051
-
-cache:
-  api_server:
-    addr: :8080
-
-persistent:
-  api_server:
-    addr: :8080
+  validator_service_name: validator.eduseal.docker
+  root_ca_path: /etc/ssl/certs/eduseal_root_CA.crt
+  redict:
+    nodes:
+     # - redis:6379
+      - kv-test-1.eduseal.sunet.se:6379
+      - kv-test-1.eduseal.sunet.se:6380
+      - kv-test-1.eduseal.sunet.se:6381
+      - kv-test-2.eduseal.sunet.se:6379
+      - kv-test-2.eduseal.sunet.se:6380
+      - kv-test-2.eduseal.sunet.se:6381
+      - kv-test-3.eduseal.sunet.se:6379
+      - kv-test-3.eduseal.sunet.se:6380
+      - kv-test-3.eduseal.sunet.se:6381
+    password: test-password
 
 apigw:
   api_server:
-    addr: :8080
+    addr: :443
+    tls:
+      enabled: true
+      cert_file_path: /etc/ssl/private/apigw.pem
+      key_file_path: /etc/ssl/private/apigw.key
+  client_cert:
+      cert_file_path: /etc/ssl/certs/apigw.crt
+      key_file_path: /etc/ssl/private/apigw.key
+      root_ca_path: /etc/ssl/certs/eduseal_root_CA.crt
+
   jwt_auth:
     enabled: false
     access:
       "860223": eduseal-test
+    jwk_url: "https://auth-test.sunet.se/.well-known/jwks.json"
 
 sealer_1:
+  grpc_server:
+    addr: "sealer_1:50051"
+    tls_enabled: true
+    private_key_path: "/etc/ssl/private/sealer_1.key"
+    certificate_chain_path: "/etc/ssl/private/sealer_1.pem"
   pkcs11:
     pin: "1234"
     module: /usr/lib/softhsm/libsofthsm2.so
@@ -55,6 +69,11 @@ sealer_1:
     field_name: "Signature1"
 
 sealer_2:
+  grpc_server:
+    addr: "sealer_2:50051"
+    tls_enabled: true
+    private_key_path: "/etc/ssl/private/sealer_2.key"
+    certificate_chain_path: "/etc/ssl/private/sealer_2.pem"
   pkcs11:
     pin: "1234"
     module: /usr/lib/softhsm/libsofthsm2.so
@@ -70,7 +89,17 @@ sealer_2:
     field_name: "Signature1"
 
 validator_1:
+  grpc_server:
+    addr: "validator_1:50051"
+    tls_enabled: true
+    private_key_path: "/etc/ssl/private/validator_1.key"
+    certificate_chain_path: "/etc/ssl/private/validator_1.pem"
   validation_certificates_path: "/validation_certificates"
 
 validator_2:
+  grpc_server:
+    addr: "validator_2:50051"
+    tls_enabled: true
+    private_key_path: "/etc/ssl/private/validator_2.key"
+    certificate_chain_path: "/etc/ssl/private/validator_2.pem"
   validation_certificates_path: "/validation_certificates"

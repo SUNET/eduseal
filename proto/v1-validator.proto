@@ -11,15 +11,15 @@ service Validator {
 
 // ValidateRequest provides validation data
 message ValidateRequest {
-   string pdf = 1;
+   string data = 1;
 }
 
 
 // ValidateReply return validation data
 message ValidateReply {
-    string service_name = 1;
+    string validation_backend = 1;
     bool intact_signature = 2;
     bool valid_signature = 3;
-    string transaction_id = 5;
-    string error = 6;
+    string transaction_id = 4;
+    string error = 5;
 }

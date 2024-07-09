@@ -79,7 +79,7 @@ func (c *EduSealSigningColl) IsRevoked(ctx context.Context, transactionID string
 		return false
 	}
 
-	if doc.RevokedTS != 0 {
+	if doc.RevokedAt != 0 {
 		return true
 	}
 	return false

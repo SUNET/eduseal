@@ -1,6 +1,6 @@
 FROM debian:stable
 
-RUN addgroup --system sunet && adduser --system --shell /bin/false --ingroup sunet sunet
+#RUN addgroup --system sunet && adduser --system --shell /bin/false --ingroup sunet sunet
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y \
     python3-pip \
     netcat-traditional \
     dnsutils \
-    git \
+    #git \
     openssl \
     vim-tiny \
     bsdmainutils \
@@ -20,12 +20,12 @@ RUN apt-get update && apt-get install -y \
     net-tools \
     bind9-host \
     procps \
+    opensc \
     opensc-pkcs11 \
     usbutils \
     libpcsclite1 \
     libgdk-pixbuf2.0-0 \
-    libgtk2.0-0 \
-    libpango-1.0-0
+    libgtk2.0-0 
 
 RUN rm -rf /var/lib/apt/lists/*
 
@@ -43,15 +43,12 @@ RUN cd /tmp/ && wget https://www.globalsign.com/en/safenet-drivers/USB/10.7/Safe
 RUN unzip /tmp/Safenet_Linux_Installer_DEB_x64.zip -d /tmp/
 RUN dpkg -i /tmp/safenetauthenticationclient_10.7.77_amd64.deb
 
-RUN mkdir -p /var/log/sunet && chown sunet: /var/log/sunet && chmod 770 /var/log/sunet
-
+#RUN mkdir -p /var/log/sunet && chown sunet: /var/log/sunet && chmod 770 /var/log/sunet
+RUN mkdir -p /var/log/sunet && chmod 770 /var/log/sunet
 
 COPY src ./src
-COPY dockerfiles/start.sh ./
-
-EXPOSE 8080
-
-HEALTHCHECK --interval=27s CMD curl --max-time 20 http://localhost:8080/status/healthy | grep -q STATUS_OK
+COPY docker/sealer/sectigo/start.sh ./
+COPY docker/sealer/sectigo/snow_white.sh ./
 
 ENTRYPOINT [ "/bin/bash"]
 
