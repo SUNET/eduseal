@@ -101,6 +101,7 @@ func (s *Service) middlewareJWTAuth(ctx context.Context) gin.HandlerFunc {
 				Details: details,
 			}
 			renderContent(c, 401, gin.H{"data": nil, "error": err})
+			c.Abort()
 			return
 		}
 		tokenString, found := strings.CutPrefix(tokenString, "Bearer ")
