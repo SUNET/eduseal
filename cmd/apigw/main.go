@@ -5,6 +5,7 @@ import (
 	"eduseal/internal/apigw/apiv1"
 	"eduseal/internal/apigw/db"
 	"eduseal/internal/apigw/httpserver"
+	"eduseal/internal/apigw/stream"
 	"eduseal/pkg/configuration"
 	"eduseal/pkg/grpcclient"
 	"eduseal/pkg/kvclient"
@@ -35,12 +36,13 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	tracer, err := trace.New(ctx, cfg, log, "eduseal", "apigw")
+
+	tracer, err := trace.New(ctx, cfg, "eduseal_apigw", log.New("tracer"))
 	if err != nil {
 		panic(err)
 	}
 
-	grpcClient, err := grpcclient.New(ctx, cfg, log.New("grpcclient"))
+	grpcClient, err := grpcclient.New(ctx, cfg, tracer, log.New("grpcclient"))
 	if err != nil {
 		panic(err)
 	}
@@ -51,16 +53,23 @@ func main() {
 		panic(err)
 	}
 
+	streamService, err := stream.New(ctx, kvClient, tracer, cfg, log.New("stream"))
+	services["streamService"] = streamService
+	if err != nil {
+		panic(err)
+	}
+
 	dbService, err := db.New(ctx, cfg, tracer, log.New("db"))
 	services["dbService"] = dbService
 	if err != nil {
 		panic(err)
 	}
 
-	apiv1Client, err := apiv1.New(ctx, kvClient, grpcClient, dbService, tracer, cfg, log.New("apiv1"))
+	apiv1Client, err := apiv1.New(ctx, kvClient, grpcClient, dbService, streamService, tracer, cfg, log.New("apiv1"))
 	if err != nil {
 		panic(err)
 	}
+
 	httpService, err := httpserver.New(ctx, cfg, apiv1Client, tracer, log.New("httpserver"))
 	services["httpService"] = httpService
 	if err != nil {

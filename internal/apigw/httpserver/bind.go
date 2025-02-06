@@ -2,18 +2,18 @@ package httpserver
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"reflect"
 
+	"github.com/bytedance/sonic"
 	"github.com/gin-gonic/gin"
 )
 
 func (s *Service) bindV2(ctx context.Context, c *gin.Context, v any) error {
-	ctx, span := s.tp.Start(ctx, "httpserver:bindV2")
+	_, span := s.tp.Start(ctx, "httpserver:bindV2")
 	defer span.End()
 
-	return json.NewDecoder(c.Request.Body).Decode(&v)
+	return sonic.ConfigDefault.NewDecoder(c.Request.Body).Decode(v)
 }
 
 func (s *Service) bindRequest(ctx context.Context, c *gin.Context, v any) error {
@@ -29,7 +29,7 @@ func (s *Service) bindRequest(ctx context.Context, c *gin.Context, v any) error 
 }
 
 func (s *Service) bindRequestQuery(ctx context.Context, c *gin.Context, v any) error {
-	ctx, span := s.tp.Start(ctx, "httpserver:bindRequestQuery")
+	_, span := s.tp.Start(ctx, "httpserver:bindRequestQuery")
 	defer span.End()
 
 	refV := reflect.ValueOf(v).Elem()

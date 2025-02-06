@@ -34,15 +34,16 @@ func (d *Doc) SaveSigned(ctx context.Context, doc *model.Document) error {
 		return helpers.ErrNoTransactionID
 	}
 
-	if err := d.client.RedictCC.Expire(ctx, d.signedKey(doc.TransactionID), 1*time.Hour).Err(); err != nil {
-		span.SetStatus(codes.Error, err.Error())
-		return err
-	}
-
 	if err := d.client.RedictCC.HSet(ctx, d.signedKey(doc.TransactionID), doc).Err(); err != nil {
 		span.SetStatus(codes.Error, err.Error())
 		return err
 	}
+
+	if err := d.client.RedictCC.Expire(ctx, d.signedKey(doc.TransactionID), 10*time.Second).Err(); err != nil {
+		span.SetStatus(codes.Error, err.Error())
+		return err
+	}
+
 	return nil
 }
 

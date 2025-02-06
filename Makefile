@@ -24,6 +24,10 @@ staticcheck:
 	$(info Run staticcheck)
 	staticcheck ./...
 
+vulncheck:
+	$(info Run vulncheck)
+	govulncheck -show verbose ./...
+
 start:
 	$(info Run!)
 	docker compose -f docker-compose.yaml up -d --remove-orphans
@@ -39,6 +43,16 @@ update_py_deps:
 	$(PIPCOMPILE) requirements.in
 
 restart: stop start
+
+clean_nats_volumes:
+	$(info deleting nats volumes)
+	docker volume rm nats1 nats2 nats3
+
+create_nats_volumes:
+	$(info Creating nats volumes)
+	docker volume create nats1
+	docker volume create nats2
+	docker volume create nats3
 
 get_release-tag:
 	@date +'%Y%m%d%H%M%S%9N'
@@ -56,7 +70,7 @@ DOCKER_TAG_VALIDATOR			:= docker.sunet.se/eduseal/validator:$(VERSION)
 
 
 #### Docker build
-docker-build-non-pkcs11-containers: docker-build-cache docker-build-persistent docker-build-apigw docker-build-validator
+docker-build-non-pkcs11-containers: docker-build-apigw docker-build-validator
 docker-build-sectigo: docker-build-non-pkcs11-containers docker-build-sealer-sectigo
 docker-build-softhsm: docker-build-non-pkcs11-containers docker-build-sealer-softhsm
 
@@ -81,7 +95,7 @@ docker-build-gobuild:
 	docker build --tag $(DOCKER_TAG_GOBUILD) --file docker/gobuild .
 
 #### Docker push
-docker-push: docker-push-cache docker-push-persistent docker-push-apigw docker-push-sealer-usb docker-push-validator
+docker-push: docker-push-apigw docker-push-sealer-sectigo docker-push-sealer-softhsm docker-push-validator
 	$(info Pushing docker images)
 
 docker-push-apigw:
@@ -104,7 +118,6 @@ docker-push-gobuild:
 	$(info Pushing docker images)
 	docker push $(DOCKER_TAG_GOBUILD)
 
-
 docker-tag-apigw:
 	$(info Tagging docker images)
 	docker tag $(DOCKER_TAG_APIGW) docker.sunet.se/eduseal/apigw:$(NEWTAG)
@@ -113,15 +126,7 @@ docker-tag-verifier:
 	$(info Tagging docker images)
 	docker tag $(DOCKER_TAG_VERIFIER) docker.sunet.se/eduseal/verifier:$(NEWTAG)
 
-docker-tag-cache:
-	$(info Tagging docker images)
-	docker tag $(DOCKER_TAG_CACHE) docker.sunet.se/eduseal/cache:$(NEWTAG)
-
-docker-tag-persistent:
-	$(info Tagging docker images)
-	docker tag $(DOCKER_TAG_PERSISTENT) docker.sunet.se/eduseal/persistent:$(NEWTAG)
-
-docker-tag: docker-tag-apigw docker-tag-cache docker-tag-persistent
+docker-tag: docker-tag-apigw
 	$(info Tagging docker images)
 
 release:
@@ -152,15 +157,15 @@ clean_redis:
 ci_build: docker-build docker-push
 	$(info CI Build)
 
-proto: proto-status proto-sealer proto-validator
+proto-golang: proto-status-golang proto-sealer-golang proto-validator-golang
 
-proto-status:
+proto-status-golang:
 	protoc --proto_path=./proto/ --go-grpc_opt=module=eduseal --go_opt=module=eduseal --go_out=. --go-grpc_out=. ./proto/v1-status-model.proto 
 
-proto-sealer:
+proto-sealer-golang:
 	protoc --proto_path=./proto/ --go-grpc_opt=module=eduseal --go_opt=module=eduseal --go_out=. --go-grpc_out=. ./proto/v1-sealer.proto 
 
-proto-validator:
+proto-validator-golang:
 	protoc --proto_path=./proto/ --go-grpc_opt=module=eduseal --go_opt=module=eduseal --go_out=. --go-grpc_out=. ./proto/v1-validator.proto 
 
 proto-python: proto-sealer-python proto-validator-python
@@ -170,6 +175,8 @@ proto-sealer-python:
 
 proto-validator-python:
 	python -m grpc_tools.protoc --proto_path=./proto/ --python_out=./src/eduseal/validator --grpc_python_out=./src/eduseal/validator ./proto/v1-validator.proto
+
+proto: proto-golang proto-python
 
 
 swagger: swagger-apigw swagger-fmt
@@ -211,6 +218,8 @@ vscode:
 	go install golang.org/x/tools/cmd/deadcode@latest && \
 	go install github.com/securego/gosec/v2/cmd/gosec@latest && \
 	go install honnef.co/go/tools/cmd/staticcheck@latest
+	go install golang.org/x/vuln/cmd/govulncheck@latest
+	go install github.com/nats-io/nats-top@latest
 
 	$(info Create python environment)
 	python3.11 -m venv .venv

@@ -13,15 +13,6 @@ import (
 	"github.com/lithammer/shortuuid/v4"
 )
 
-func (s *Service) middlewareDuration(ctx context.Context) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		t := time.Now()
-		c.Next()
-		duration := time.Since(t)
-		c.Set("duration", duration)
-	}
-}
-
 func (s *Service) middlewareRequestID(ctx context.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := shortuuid.New()
@@ -36,18 +27,6 @@ func (s *Service) middlewareLogger(ctx context.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Next()
 		log.Info("request", "status", c.Writer.Status(), "url", c.Request.URL.String(), "method", c.Request.Method, "req_id", c.GetString("req_id"))
-	}
-}
-
-func (s *Service) middlewareAuthLog(ctx context.Context) gin.HandlerFunc {
-	ctx, span := s.tp.Start(ctx, "httpserver:middlewareAuthLog")
-	defer span.End()
-
-	log := s.logger.New("http")
-	return func(c *gin.Context) {
-		u, _ := c.Get("user")
-		c.Next()
-		log.Info("auth", "user", u, "req_id", c.GetString("req_id"))
 	}
 }
 
@@ -71,7 +50,7 @@ func (s *Service) middlewareCrash(ctx context.Context) gin.HandlerFunc {
 }
 
 func (s *Service) middlewareClientCertAuth(ctx context.Context) gin.HandlerFunc {
-	ctx, span := s.tp.Start(ctx, "httpserver:middlewareClientCertAuth")
+	_, span := s.tp.Start(ctx, "httpserver:middlewareClientCertAuth")
 	defer span.End()
 
 	log := s.logger.New("http")

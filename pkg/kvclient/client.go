@@ -13,21 +13,25 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/redis/go-redis/v9"
+	//"codeberg.org/redict/go-redic"
 )
 
 // Client holds the kv object
 type Client struct {
-	RedictCC     *redis.ClusterClient
-	cfg          *model.Cfg
-	log          *logger.Log
-	probeStore   *v1_status.StatusProbeStore
-	tp           *trace.Tracer
-	statusResult statusResults
-	statusTick   *time.Ticker
+	RedictCC   *redis.ClusterClient
+	cfg        *model.Cfg
+	log        *logger.Log
+	probeStore *v1_status.StatusProbeStore
+	tp         *trace.Tracer
+	statusTick *time.Ticker
 
-	Doc *Doc
+	Doc               *Doc
+	MetricSigning     *MetricSigning
+	MetricFetching    *MetricFetching
+	MetricValidations *MetricValidations
 }
-type statusResults map[string]statusResult
+
+//type statusResults map[string]statusResult
 
 type statusResult struct {
 	healthy bool
@@ -64,10 +68,12 @@ func New(ctx context.Context, cfg *model.Cfg, tracer *trace.Tracer, log *logger.
 		},
 	)
 
-	c.Doc = &Doc{
-		client: c,
-		key:    "doc:%s:%s",
-	}
+	c.probe(ctx)
+
+	c.Doc = &Doc{client: c, key: "doc:%s:%s"}
+	c.MetricSigning = &MetricSigning{client: c, key: "metric:signings"}
+	c.MetricFetching = &MetricFetching{client: c, key: "metric:fetching"}
+	c.MetricValidations = &MetricValidations{client: c, key: "metric:validations"}
 
 	go func() {
 		for {
@@ -76,11 +82,7 @@ func New(ctx context.Context, cfg *model.Cfg, tracer *trace.Tracer, log *logger.
 				return
 			case <-c.statusTick.C:
 				c.log.Info("Checking status")
-				res, err := c.RedictCC.Ping(ctx).Result()
-				if err != nil {
-					c.log.Error(err, "Error checking status")
-				}
-				c.log.Info("Status", "result", res)
+				c.probe(ctx)
 			}
 		}
 	}()
@@ -90,27 +92,26 @@ func New(ctx context.Context, cfg *model.Cfg, tracer *trace.Tracer, log *logger.
 	return c, nil
 }
 
-// Status returns the status of the database
-func (c *Client) Status(ctx context.Context) *v1_status.StatusProbe {
-	if time.Now().Before(c.probeStore.NextCheck.AsTime()) {
-		return c.probeStore.PreviousResult
-	}
-	probe := &v1_status.StatusProbe{
+func (c *Client) probe(ctx context.Context) {
+	c.probeStore.PreviousResult = &v1_status.StatusProbe{
 		Name:          "kv",
 		Healthy:       true,
 		Message:       "OK",
 		LastCheckedTS: timestamppb.Now(),
 	}
-
 	_, err := c.RedictCC.Ping(ctx).Result()
 	if err != nil {
-		probe.Message = err.Error()
-		probe.Healthy = false
+		c.probeStore.PreviousResult.Message = err.Error()
+		c.probeStore.PreviousResult.Healthy = false
 	}
-	c.probeStore.PreviousResult = probe
-	c.probeStore.NextCheck = timestamppb.New(time.Now().Add(time.Second * 10))
+}
 
-	return probe
+// Status returns the status of the database
+func (c *Client) Status(ctx context.Context) *v1_status.StatusProbe {
+	ctx, span := c.tp.Start(ctx, "kv:Status")
+	defer span.End()
+
+	return c.probeStore.PreviousResult
 }
 
 // Close closes the connection to the database

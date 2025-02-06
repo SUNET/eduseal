@@ -7,3 +7,4 @@ redis-data/
 developer_tools/pki/*
 docker/sealer/softhsm/*.der
 docker/sealer/softhsm/*.crt
+config.yaml

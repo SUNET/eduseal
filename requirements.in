@@ -14,3 +14,5 @@ grpcio
 grpclib
 protobuf
 grpcio-health-checking
+asyncio
+nats-py

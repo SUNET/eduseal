@@ -4,6 +4,7 @@ import (
 	"context"
 	"eduseal/pkg/helpers"
 	"eduseal/pkg/model"
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -38,36 +39,45 @@ type PDFSignReply struct {
 func (c *Client) PDFSign(ctx context.Context, req *PDFSignRequest) (*PDFSignReply, error) {
 	ctx, span := c.tp.Start(ctx, "apiv1:PDFSign")
 	defer span.End()
-	span.AddEvent("PDFSign")
 
-	if err := helpers.Check(ctx, c.cfg, req, c.log); err != nil {
-		span.SetStatus(codes.Error, err.Error())
-		return nil, err
+	if req.PDF == "" {
+		span.SetStatus(codes.Error, helpers.ErrEmptyPDF.Error())
+		return nil, helpers.ErrEmptyPDF
 	}
+
 	transactionID := uuid.NewString()
 
-	c.log.Debug("PDFSign", "transaction_id", transactionID)
-	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
-	defer cancel()
+	reply := &PDFSignReply{
+		Data: &v1_sealer.SealReply{
+			TransactionId: transactionID,
+		},
+	}
 
-	signedDoc, err := c.grpcClient.Sealer.Seal(ctx, transactionID, req.PDF)
+	request := &v1_sealer.SealRequest{
+		Data:          req.PDF,
+		TransactionId: transactionID,
+	}
+
+	requestJSON, err := json.Marshal(request)
 	if err != nil {
-		c.log.Error(err, "gRPC request failed")
+		span.SetStatus(codes.Error, err.Error())
+		c.log.Error(err, "failed to marshal request")
 		return nil, err
 	}
 
-	reply := &PDFSignReply{
-		Data: signedDoc,
-	}
-	c.log.Debug("PDFSign", "reply", reply)
+	c.log.Debug("PDFSign", "transaction_id", transactionID)
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
 
-	if err := c.kv.Doc.SaveSigned(ctx, &model.Document{
-		TransactionID: signedDoc.TransactionId,
-		Data:          signedDoc.Data,
-		SealerBackend: signedDoc.SealerBackend,
-	}); err != nil {
+	if err := c.stream.Seal.Publish(ctx, requestJSON, transactionID); err != nil {
 		span.SetStatus(codes.Error, err.Error())
-		c.log.Error(err, "save seald doc failed")
+		c.log.Error(err, "failed to publish to stream")
+		return nil, err
+	}
+
+	if err := c.kv.MetricSigning.Inc(ctx); err != nil {
+		span.SetStatus(codes.Error, err.Error())
+		c.log.Error(err, "failed to increment metric")
 		return nil, err
 	}
 
@@ -100,11 +110,6 @@ func (c *Client) PDFGetSigned(ctx context.Context, req *PDFGetSignedRequest) (*P
 	ctx, span := c.tp.Start(ctx, "apiv1:PDFGetSigned")
 	defer span.End()
 
-	if err := helpers.Check(ctx, c.cfg, req, c.log); err != nil {
-		span.SetStatus(codes.Error, err.Error())
-		return nil, err
-	}
-
 	if !c.cfg.Common.Mongo.Disable {
 		if c.db.EduSealSigningColl.IsRevoked(ctx, req.TransactionID) {
 			span.SetStatus(codes.Error, helpers.ErrDocumentIsRevoked.Error())
@@ -115,11 +120,18 @@ func (c *Client) PDFGetSigned(ctx context.Context, req *PDFGetSignedRequest) (*P
 	signedDoc, err := c.kv.Doc.GetSigned(ctx, req.TransactionID)
 	if err != nil {
 		span.SetStatus(codes.Error, err.Error())
+		c.log.Error(err, "failed to get signed document")
 		return nil, err
 	}
 
 	resp := &PDFGetSignedReply{
 		Data: signedDoc,
+	}
+
+	if err := c.kv.MetricFetching.Inc(ctx); err != nil {
+		span.SetStatus(codes.Error, err.Error())
+		c.log.Error(err, "failed to increment metric")
+		return nil, err
 	}
 
 	return resp, nil
@@ -160,6 +172,12 @@ func (c *Client) PDFValidate(ctx context.Context, req *PDFValidateRequest) (*PDF
 
 	reply := &PDFValidateReply{
 		Data: validation,
+	}
+
+	if err := c.kv.MetricValidations.Inc(ctx); err != nil {
+		span.SetStatus(codes.Error, err.Error())
+		c.log.Error(err, "failed to increment metric")
+		return nil, err
 	}
 
 	return reply, nil
@@ -215,5 +233,6 @@ func (c *Client) PDFRevoke(ctx context.Context, req *PDFRevokeRequest) (*PDFRevo
 			Status: true,
 		},
 	}
+
 	return reply, nil
 }

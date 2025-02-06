@@ -30,12 +30,12 @@ func NewValidator() (*validator.Validate, error) {
 
 // Check checks for validation error
 func Check(ctx context.Context, cfg *model.Cfg, s any, log *logger.Log) error {
-	tp, err := trace.New(ctx, cfg, log, "vc", "vc")
+	tp, err := trace.New(ctx, cfg, "eduseal_helpers", log)
 	if err != nil {
 		return err
 	}
 
-	ctx, span := tp.Start(ctx, "helpers:check")
+	_, span := tp.Start(ctx, "helpers:check")
 	defer span.End()
 
 	validate, err := NewValidator()

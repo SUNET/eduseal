@@ -9,12 +9,14 @@ import (
 type Sealer struct {
 	client      *Client
 	scheme      string
-	serviceName string
 	DNS         map[string][]string
 }
 
 // Seal sends a request to the sealer service to seal a PDF
 func (c *Sealer) Seal(ctx context.Context, transactionID, data string) (*v1_sealer.SealReply, error) {
+	ctx, span := c.client.tp.Start(ctx, "grpcclient:Seal")
+	defer span.End()
+
 	conn, err := c.client.rrConn(ctx, c.scheme, c.client.cfg.Common.SealerServiceName)
 	defer conn.Close()
 	if err != nil {
