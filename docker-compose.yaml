@@ -4,7 +4,7 @@ services:
   apigw:
     container_name: "eduseal_dev_apigw"
     image: docker.sunet.se/eduseal/apigw:latest
-    #restart: always
+    restart: always
     volumes:
       - ./config.yaml:/config.yaml:ro
       - /var/log/sunet:/var/log/sunet
@@ -14,13 +14,13 @@ services:
       - ./developer_tools/pki/apigw.pem:/etc/ssl/private/apigw.pem:ro
     depends_on:
       #- mongo
-      - sealer_1
-      - sealer_2
       - validator_1
       - validator_2
+      - nats1
+      - nats2
+      - nats3
+      - jaeger
     links:
-      - sealer_1
-      - sealer_2
       - validator_1
       - validator_2
     networks:
@@ -46,6 +46,10 @@ services:
       - ./developer_tools/pki/document_sealing.crt:/opt/sunet/pki/sealing.crt:ro
     expose:
       - 50051
+    depends_on:
+      - nats1
+      - nats2
+      - nats3
     networks:
       eduseal-dev-net:
         ipv4_address: 172.20.50.14
@@ -66,6 +70,10 @@ services:
       - ./developer_tools/pki/rootCA.crt:/etc/ssl/certs/eduseal_root_CA.crt:ro
       - ./developer_tools/pki/document_sealing_private.der:/opt/sunet/pki/sealing.der:ro
       - ./developer_tools/pki/document_sealing.crt:/opt/sunet/pki/sealing.crt:ro
+    depends_on:
+      - nats1
+      - nats2
+      - nats3
     expose:
       - 50051
     networks:
@@ -116,21 +124,108 @@ services:
       - "EDUSEAL_SERVICE_NAME=validator_2"
       - "EDUSEAL_CONFIG_NAMESPACE=validator_2"
 
-  redis:
-    image: redis
-    container_name: "eduseal_dev_redis"
-    command: [ "redis-server", "/etc/redis/redis.conf" ]
+  redis-node-0:
+    container_name: "eduseal_dev_redis-node-0"
+    image: docker.io/bitnami/redis-cluster:7.2
     volumes:
-      - /redis_data:/data
-      - /config/redis-1.conf:/etc/redis/redis.conf
-    expose:
-      - 6371
-      - 16379
+      - redis-cluster_data-0:/bitnami/redis/data
     networks:
       eduseal-dev-net:
-        ipv4_address: 172.20.50.21
+        ipv4_address: 172.20.50.30
+    environment:
+      - 'REDIS_PASSWORD=test-password'
+      - 'REDIS_NODES=redis-node-0 redis-node-1 redis-node-2'
 
-  #mongo:
+  redis-node-1:
+    container_name: "eduseal_dev_redis-node-1"
+    image: docker.io/bitnami/redis-cluster:7.2
+    volumes:
+      - redis-cluster_data-1:/bitnami/redis/data
+    networks:
+      eduseal-dev-net:
+        ipv4_address: 172.20.50.31
+    environment:
+      - 'REDIS_PASSWORD=test-password'
+      - 'REDIS_NODES=redis-node-0 redis-node-1 redis-node-2'
+
+  redis-node-2:
+    container_name: "eduseal_dev_redis-node-2"
+    image: docker.io/bitnami/redis-cluster:7.2
+    volumes:
+      - redis-cluster_data-2:/bitnami/redis/data
+    depends_on:
+      - redis-node-0
+      - redis-node-1
+    networks:
+      eduseal-dev-net:
+        ipv4_address: 172.20.50.32
+    environment:
+      - 'REDIS_PASSWORD=test-password'
+      - 'REDISCLI_AUTH=test-password'
+      - 'REDIS_CLUSTER_REPLICAS=1'
+      - 'REDIS_NODES=redis-node-0 redis-node-1 redis-node-2'
+      - 'REDIS_CLUSTER_CREATOR=yes'
+
+  nats1:
+    image: docker.io/nats:linux
+    container_name: "eduseal_dev_nats1"
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    volumes:
+      - nats1:/data
+    networks:
+      eduseal-dev-net:
+        ipv4_address: 172.20.50.41
+    command:
+      - "--name=nats1"
+      - "--cluster_name=c1"
+      - "--cluster=nats://nats1:6222"
+      - "--routes=nats-route://nats1:6222,nats-route://nats2:6222,nats-route://nats3:6222"
+      - "--http_port=8222"
+      - "--js"
+      - "--sd=/data"
+
+  nats2:
+    image: docker.io/nats:linux
+    container_name: "eduseal_dev_nats2"
+    ports:
+      - "4223:4222"
+      - "8223:8222"
+    volumes:
+      - nats2:/data
+    networks:
+      eduseal-dev-net:
+        ipv4_address: 172.20.50.42
+    command:
+      - "--name=nats2"
+      - "--cluster_name=c1"
+      - "--cluster=nats://nats2:6222"
+      - "--routes=nats-route://nats1:6222,nats-route://nats2:6222,nats-route://nats3:6222"
+      - "--http_port=8222"
+      - "--js"
+      - "--sd=/data"
+
+  nats3:
+    image: docker.io/nats:linux
+    container_name: "eduseal_dev_nats3"
+    ports:
+      - "4224:4222"
+      - "8224:8222"
+    volumes:
+      - nats3:/data
+    networks:
+      eduseal-dev-net:
+        ipv4_address: 172.20.50.43
+    command:
+      - "--name=nats3"
+      - "--cluster_name=c1"
+      - "--cluster=nats://nats3:6222"
+      - "--routes=nats-route://nats1:6222,nats-route://nats2:6222,nats-route://nats3:6222"
+      - "--http_port=8222"
+      - "--js"
+      - "--sd=/data"
+
   #  image: mongo:4.0.10
   #  container_name: "eduseal_dev_mongo"
   #  restart: always
@@ -152,7 +247,7 @@ services:
       - 4318
     networks:
       eduseal-dev-net:
-        ipv4_address: 172.20.50.30
+        ipv4_address: 172.20.50.50
     environment:
       - "COLLECTOR_OTLP_ENABLED=true"
 
@@ -167,4 +262,17 @@ networks:
         - subnet: 172.20.50.0/24
 volumes:
   mongo_data:
-  redis_data:
+  redis-cluster_data-0:
+    driver: local
+  redis-cluster_data-1:
+    driver: local
+  redis-cluster_data-2:
+    driver: local
+  nats1:
+    external: true
+  nats2:
+    external: true
+  nats3:
+    external: true
+  prometheus_data:
+  grafana_data:

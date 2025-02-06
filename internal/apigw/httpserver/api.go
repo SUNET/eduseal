@@ -15,5 +15,6 @@ type Apiv1 interface {
 	PDFRevoke(ctx context.Context, req *apiv1.PDFRevokeRequest) (*apiv1.PDFRevokeReply, error)
 
 	// misc endpoints
-	Health(ctx context.Context, req *v1_status.StatusRequest) (*v1_status.StatusReply, error)
+	Health(ctx context.Context) (*v1_status.StatusReply, error)
+	Metrics(ctx context.Context) (*apiv1.MetricReply, error)
 }

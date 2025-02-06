@@ -15,7 +15,6 @@ import (
 	_ "eduseal/docs/apigw"
 
 	"github.com/gin-gonic/gin"
-	"github.com/gin-gonic/gin/binding"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
@@ -50,13 +49,13 @@ func New(ctx context.Context, config *model.Cfg, api *apiv1.Client, tp *trace.Tr
 		gin.SetMode(gin.DebugMode)
 	}
 
-	apiValidator, err := helpers.NewValidator()
-	if err != nil {
-		return nil, err
-	}
-	binding.Validator = &defaultValidator{
-		Validate: apiValidator,
-	}
+	//apiValidator, err := helpers.NewValidator()
+	//if err != nil {
+	//	return nil, err
+	//}
+	//binding.Validator = &defaultValidator{
+	//	Validate: apiValidator,
+	//}
 
 	s.gin = gin.New()
 	s.server.Handler = s.gin
@@ -67,7 +66,6 @@ func New(ctx context.Context, config *model.Cfg, api *apiv1.Client, tp *trace.Tr
 
 	// Middlewares
 	s.gin.Use(s.middlewareRequestID(ctx))
-	s.gin.Use(s.middlewareDuration(ctx))
 	s.gin.Use(s.middlewareLogger(ctx))
 	s.gin.Use(s.middlewareCrash(ctx))
 	problem404, err := helpers.Problem404()
@@ -78,6 +76,7 @@ func New(ctx context.Context, config *model.Cfg, api *apiv1.Client, tp *trace.Tr
 
 	rgRoot := s.gin.Group("/")
 	s.regEndpoint(ctx, rgRoot, http.MethodGet, "health", s.endpointHealth)
+	s.regEndpoint(ctx, rgRoot, http.MethodGet, "metrics", s.endpointMetrics)
 
 	rgDocs := rgRoot.Group("/swagger")
 	rgDocs.GET("/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))

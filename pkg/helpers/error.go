@@ -20,6 +20,9 @@ var (
 
 	// ErrNoDocumentData is returned when no document_data is found
 	ErrNoDocumentData = NewError("no_document_data")
+
+	// ErrEmptyPDF is returned when the PDF is empty
+	ErrEmptyPDF = NewError("empty_pdf")
 )
 
 type Error struct {

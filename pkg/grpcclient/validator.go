@@ -14,6 +14,9 @@ type Validator struct {
 
 // Validate sends a request to the validator service to validate the signature of a PDF
 func (c *Validator) Validate(ctx context.Context, transactionID, data string) (*v1_validator.ValidateReply, error) {
+	ctx, span := c.client.tp.Start(ctx, "grpcclient:Validate")
+	defer span.End()
+
 	conn, err := c.client.rrConn(ctx, c.scheme, c.client.cfg.Common.ValidatorServiceName)
 	defer conn.Close()
 	if err != nil {
@@ -25,6 +28,8 @@ func (c *Validator) Validate(ctx context.Context, transactionID, data string) (*
 	if err != nil {
 		return nil, err
 	}
+
+	c.client.log.Debug("Validatexxx", "validation", validation)
 
 	return validation, nil
 

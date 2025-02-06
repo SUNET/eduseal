@@ -1,7 +1,5 @@
 FROM debian:stable
 
-#RUN addgroup --system sunet && adduser --system --shell /bin/false --ingroup sunet sunet
-
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y \
@@ -44,11 +42,14 @@ RUN unzip /tmp/Safenet_Linux_Installer_DEB_x64.zip -d /tmp/
 RUN dpkg -i /tmp/safenetauthenticationclient_10.7.77_amd64.deb
 
 #RUN mkdir -p /var/log/sunet && chown sunet: /var/log/sunet && chmod 770 /var/log/sunet
-RUN mkdir -p /var/log/sunet && chmod 770 /var/log/sunet
 
 COPY src ./src
 COPY docker/sealer/sectigo/start.sh ./
 COPY docker/sealer/sectigo/snow_white.sh ./
+
+RUN mkdir -p /var/log/sunet && chmod 770 /var/log/sunet
+
+HEALTHCHECK --interval=5s CMD ls /tmp/healthcheck || exit 1
 
 ENTRYPOINT [ "/bin/bash"]
 

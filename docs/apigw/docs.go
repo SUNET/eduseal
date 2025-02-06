@@ -15,7 +15,7 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/ladok/pdf/revoke/{transaction_id}": {
+        "/pdf/revoke/{transaction_id}": {
             "put": {
                 "description": "revoke a singed pdf",
                 "consumes": [
@@ -25,10 +25,10 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "ladok"
+                    "eduseal"
                 ],
                 "summary": "revoke signed pdf",
-                "operationId": "ladok-pdf-revoke",
+                "operationId": "pdf-revoke",
                 "parameters": [
                     {
                         "type": "string",
@@ -54,7 +54,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/ladok/pdf/sign": {
+        "/pdf/sign": {
             "post": {
                 "description": "sign base64 encoded PDF",
                 "consumes": [
@@ -64,10 +64,10 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "ladok"
+                    "eduseal"
                 ],
                 "summary": "Sign pdf",
-                "operationId": "ladok-pdf-sign",
+                "operationId": "pdf-sign",
                 "parameters": [
                     {
                         "description": " ",
@@ -95,7 +95,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/ladok/pdf/validate": {
+        "/pdf/validate": {
             "post": {
                 "description": "validate a signed base64 encoded PDF",
                 "consumes": [
@@ -105,10 +105,10 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "ladok"
+                    "eduseal"
                 ],
                 "summary": "Validate pdf",
-                "operationId": "ladok-pdf-validate",
+                "operationId": "pdf-validate",
                 "parameters": [
                     {
                         "description": " ",
@@ -136,7 +136,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/ladok/pdf/{transaction_id}": {
+        "/pdf/{transaction_id}": {
             "get": {
                 "description": "fetch a singed pdf",
                 "consumes": [
@@ -146,10 +146,10 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "ladok"
+                    "eduseal"
                 ],
                 "summary": "fetch singed pdf",
-                "operationId": "ladok-pdf-fetch",
+                "operationId": "pdf-fetch",
                 "parameters": [
                     {
                         "type": "string",
@@ -181,15 +181,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "data": {
-                    "type": "object",
-                    "properties": {
-                        "document": {
-                            "$ref": "#/definitions/types.Document"
-                        },
-                        "message": {
-                            "type": "string"
-                        }
-                    }
+                    "$ref": "#/definitions/model.Document"
                 }
             }
         },
@@ -210,15 +202,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "data": {
-                    "type": "object",
-                    "required": [
-                        "transaction_id"
-                    ],
-                    "properties": {
-                        "transaction_id": {
-                            "type": "string"
-                        }
-                    }
+                    "$ref": "#/definitions/v1_sealer.SealReply"
                 }
             }
         },
@@ -237,7 +221,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "data": {
-                    "$ref": "#/definitions/types.Validation"
+                    "$ref": "#/definitions/v1_validator.ValidateReply"
                 }
             }
         },
@@ -266,61 +250,63 @@ const docTemplate = `{
                 }
             }
         },
-        "types.Document": {
+        "model.Document": {
             "type": "object",
             "properties": {
-                "base64_data": {
-                    "type": "string"
-                },
-                "contact_info": {
-                    "type": "string"
-                },
-                "create_ts": {
-                    "type": "integer"
-                },
-                "error": {
-                    "type": "string"
-                },
-                "location": {
+                "data": {
                     "type": "string"
                 },
                 "message": {
                     "type": "string"
                 },
-                "modify_ts": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
                 "reason": {
                     "type": "string"
                 },
-                "revoked_ts": {
+                "revoked_at": {
                     "type": "integer"
+                },
+                "sealer_backend": {
+                    "type": "string"
                 },
                 "transaction_id": {
                     "type": "string"
                 }
             }
         },
-        "types.Validation": {
+        "v1_sealer.SealReply": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "string"
+                },
+                "error": {
+                    "type": "string"
+                },
+                "sealer_backend": {
+                    "type": "string"
+                },
+                "transaction_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "v1_validator.ValidateReply": {
             "type": "object",
             "properties": {
                 "error": {
                     "type": "string"
                 },
-                "is_revoked": {
+                "intact_signature": {
                     "type": "boolean"
-                },
-                "message": {
-                    "type": "string"
                 },
                 "transaction_id": {
                     "type": "string"
                 },
                 "valid_signature": {
                     "type": "boolean"
+                },
+                "validation_backend": {
+                    "type": "string"
                 }
             }
         }

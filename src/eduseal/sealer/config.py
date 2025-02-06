@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 import yaml
 import os
 import sys
@@ -26,8 +26,14 @@ class GRPCServer(BaseModel):
     private_key_path: Optional[str] = None
     certificate_chain_path: Optional[str] = None
 
+class Queue(BaseModel):
+    username: str
+    password: str
+    addr: List[str]
+
 class CFG(BaseModel):
     grpc_server: GRPCServer
+    queue: Queue
     pkcs11: PKCS11
     metadata: PdfSignatureMetadata
 

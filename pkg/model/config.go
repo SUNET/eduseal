@@ -41,12 +41,14 @@ type Common struct {
 	Log                  Log      `yaml:"log"`
 	Mongo                Mongo    `yaml:"mongo" validate:"required"`
 	Tracing              OTEL     `yaml:"tracing" validate:"required"`
+	Metric               OTEL     `yaml:"metric" validate:"required"`
 	SealerNodes          []string `yaml:"sealer_nodes" validate:"omitempty"`
 	SealerServiceName    string   `yaml:"sealer_service_name" validate:"omitempty"`
 	ValidatorNodes       []string `yaml:"validator_nodes" validate:"omitempty"`
 	ValidatorServiceName string   `yaml:"validator_service_name" validate:"omitempty"`
 	RootCAPath           string   `yaml:"root_ca_path"`
 	Redict               Redict   `yaml:"redict" validate:"required"`
+	Queue                Queue    `yaml:"queue" validate:"required"`
 }
 
 // Redict holds the key/value configuration
@@ -87,8 +89,16 @@ type APIGW struct {
 
 // OTEL holds the opentelemetry configuration
 type OTEL struct {
-	Addr string `yaml:"addr" validate:"required"`
-	Type string `yaml:"type" validate:"required"`
+	Addr    string `yaml:"addr" validate:"required"`
+	Type    string `yaml:"type" validate:"required"`
+	Timeout int64  `yaml:"timeout" validate:"required"`
+}
+
+// Queue holds the queue configuration
+type Queue struct {
+	Username string   `yaml:"username" validate:"required"`
+	Password string   `yaml:"password" validate:"required"`
+	Addr     []string `yaml:"addr" validate:"required"`
 }
 
 // Cfg is the main configuration structure for this application

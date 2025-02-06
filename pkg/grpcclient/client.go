@@ -4,6 +4,7 @@ import (
 	"context"
 	"eduseal/pkg/logger"
 	"eduseal/pkg/model"
+	"eduseal/pkg/trace"
 	"fmt"
 
 	"google.golang.org/grpc"
@@ -15,16 +16,18 @@ import (
 type Client struct {
 	cfg *model.Cfg
 	log *logger.Log
+	tp  *trace.Tracer
 
 	Validator *Validator
 	Sealer    *Sealer
 }
 
 // New creates a new instance of the gRPC client
-func New(ctx context.Context, cfg *model.Cfg, log *logger.Log) (*Client, error) {
+func New(ctx context.Context, cfg *model.Cfg, tp *trace.Tracer, log *logger.Log) (*Client, error) {
 	c := &Client{
 		cfg: cfg,
 		log: log,
+		tp:  tp,
 	}
 
 	c.Validator = &Validator{

@@ -1,10 +1,9 @@
-import grpc
-import time
-from concurrent import futures
 import logging
 from io import BytesIO
 import os
 import base64
+import signal
+import json
 
 from pkcs11 import Session, UserAlreadyLoggedIn
 from pyhanko.sign.pkcs11 import open_pkcs11_session
@@ -19,6 +18,11 @@ from pyhanko.pdf_utils.misc import PdfReadError
 from eduseal.sealer.v1_sealer_pb2 import SealRequest, SealReply
 import eduseal.sealer.v1_sealer_pb2_grpc as pb2_grpc
 from eduseal.sealer.config import parse, CFG
+
+
+import asyncio
+from nats.aio.client import Client as NATS
+from nats.js.api import ConsumerConfig
 
 class Common():
     def __init__(self) -> None:
@@ -61,7 +65,7 @@ class Sealer(Common, pb2_grpc.SealerServicer):
         except UserAlreadyLoggedIn:
             self.logger.info("pkcs11 user already logged in!")
 
-    def Seal(self, in_data: SealRequest, context)-> SealReply:
+    async def Seal(self, in_data: SealRequest)-> SealReply:
         self.logger.debug("start sealing")
         self.logger.debug(f"transaction_id: {in_data.transaction_id}")
 
@@ -114,17 +118,14 @@ class Sealer(Common, pb2_grpc.SealerServicer):
                 sealer_backend=self.service_name,
             )
 
-        signer = PdfSigner(
-            signature_meta=signature_meta,
-            signer=pkcs11_signer,
-        )
-
         signed_pdf = BytesIO()
 
         try:
-            signer.sign_pdf(
+            await signers.async_sign_pdf(
                 pdf_out=pdf_writer,
                 output=signed_pdf,
+                signer=pkcs11_signer,
+                signature_meta=signature_meta,
             )
 
         except PdfKeyNotAvailableError as _e:
@@ -141,9 +142,7 @@ class Sealer(Common, pb2_grpc.SealerServicer):
 
         signed_pdf.close()
 
-        self.logger.info("signing done")
-        self.logger.debug(f"transaction_id: {in_data.transaction_id}")
-        self.logger.debug(f"base64_data: {base64_encoded}")
+        self.logger.info(f"signing done {in_data.transaction_id}")
     
         return SealReply(
             sealer_backend=self.service_name,
@@ -152,33 +151,92 @@ class Sealer(Common, pb2_grpc.SealerServicer):
             error="",
         )
 
-class GRPCServer(Common):
+class QueueServer4(Common):
     def __init__(self) -> None:
         super().__init__()
+        self.sealer = Sealer()
 
-    def start(self):
-        server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-        pb2_grpc.add_SealerServicer_to_server(Sealer(), server)
+    async def start(self):
+        self.logger.debug("start queue server")
+        nc = NATS()
+        js = nc.jetstream()
+
+        async def stop():
+            await asyncio.sleep(1)
+            asyncio.get_running_loop().stop()
+
+        def signal_handler():
+            if nc.is_closed:
+                return
+            print("Disconnecting...")
+            asyncio.create_task(nc.close())
+            asyncio.create_task(stop())
+
+        for sig in ("SIGINT", "SIGTERM"):
+            asyncio.get_running_loop().add_signal_handler(
+                getattr(signal, sig), signal_handler
+            )
+
+        async def disconnected_cb():
+            self.logger.info("Got disconnected...")
+
+        async def reconnected_cb():
+            self.logger.info("Got reconnected...")
+
+        async def error_cb(e):
+            self.logger.error(f"error: {e}")
+
+        async def closed_cb():
+            self.logger.info("Connection to NATS is closed...")
+
+        await nc.connect(
+            servers=self.config.queue.addr,
+            user=self.config.queue.username,
+            password=self.config.queue.password,
+            closed_cb=closed_cb,
+            allow_reconnect=True,
+            reconnected_cb=reconnected_cb,
+            disconnected_cb=disconnected_cb,
+            error_cb=error_cb,
+            max_reconnect_attempts=-1,
+            reconnect_time_wait=5,
+        )
+        self.logger.info(f"Connected to NATS at {nc.connected_url.netloc}...")
+
+        async def help_request(msg):
+            self.logger.info(f"Received a message on subject: {msg.subject} header: {msg.headers}")
+
+            await msg.in_progress()
+
+            reply = await self.sealer.Seal(in_data=SealRequest(**json.loads(msg.data)))
+            d = dict(
+                transaction_id=reply.transaction_id,
+                data=reply.data,
+                error=reply.error,
+                sealer_backend=reply.sealer_backend,
+            )
+            await js.publish(
+                subject="CACHE",
+                payload=json.dumps(d).encode(),
+                headers={"Nats-Msg-Id": msg.headers["Nats-Msg-Id"]},
+            )
+            await msg.ack()
 
 
-        if self.config.grpc_server.tls_enabled:
-            assert self.config.grpc_server.private_key_path is not None
-            assert self.config.grpc_server.certificate_chain_path is not None
+        sub = await js.pull_subscribe(subject="SEAL", durable="sealer")
 
-            with open(self.config.grpc_server.private_key_path, 'rb') as f:
-                private_key = f.read()
-            with open(self.config.grpc_server.certificate_chain_path, 'rb') as f:
-                certificate_chain = f.read()
-
-            server_credentials = grpc.ssl_server_credentials( ( (private_key, certificate_chain), ) )
-
-        server.add_secure_port(self.config.grpc_server.addr, server_credentials)
-        server.start()
-        time.sleep(2)
-        open('/tmp/healthcheck','w')
-        server.wait_for_termination()
-
+        while True:
+            msgs = await sub.fetch(1, timeout=31560000)
+            self.logger.info(f"msg: {msgs[0].headers}")
+            await help_request(msgs[0])
 
 if __name__ == "__main__":
-    sealer = GRPCServer()
-    sealer.start()
+    server = QueueServer4()
+    loop = asyncio.get_event_loop()
+    try:
+        loop.run_until_complete(server.start())
+        loop.run_forever()
+        loop.close()
+    except Exception as e:
+        server.logger.error(f"error {e}")
+        pass

@@ -5,7 +5,7 @@ COPY . .
 ARG SERVICE_NAME
 
 RUN make swagger
-RUN make proto
+RUN make proto-golang
 
 RUN --mount=type=cache,target=/root/.cache/go-build GOOS=linux GOARCH=amd64 go build -v -o bin/eduseal_$SERVICE_NAME -ldflags \
     "-X eduseal/pkg/model.BuildVariableGitCommit=$(git rev-list -1 HEAD) \

@@ -3,7 +3,6 @@ package httpserver
 import (
 	"context"
 	"eduseal/internal/apigw/apiv1"
-	"eduseal/internal/gen/status/v1_status"
 
 	"go.opentelemetry.io/otel/codes"
 
@@ -14,8 +13,18 @@ func (s *Service) endpointHealth(ctx context.Context, c *gin.Context) (any, erro
 	ctx, span := s.tp.Start(ctx, "httpserver:endpointHealth")
 	defer span.End()
 
-	request := &v1_status.StatusRequest{}
-	reply, err := s.apiv1.Health(ctx, request)
+	reply, err := s.apiv1.Health(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return reply, nil
+}
+
+func (s *Service) endpointMetrics(ctx context.Context, c *gin.Context) (any, error) {
+	ctx, span := s.tp.Start(ctx, "httpserver:endpointMetrics")
+	defer span.End()
+
+	reply, err := s.apiv1.Metrics(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +55,7 @@ func (s *Service) endpointValidatePDF(ctx context.Context, c *gin.Context) (inte
 	defer span.End()
 
 	request := &apiv1.PDFValidateRequest{}
-	if err := s.bindRequest(ctx, c, request); err != nil {
+	if err := s.bindV2(ctx, c, request); err != nil {
 		span.SetStatus(codes.Error, err.Error())
 		return nil, err
 	}
