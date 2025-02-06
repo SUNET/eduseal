@@ -16,6 +16,7 @@ package jetstream
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -341,7 +342,7 @@ func (m *jetStreamMsg) ackReply(ctx context.Context, ackType ackType, sync bool,
 
 	if sync {
 		var cancel context.CancelFunc
-		ctx, cancel = wrapContextWithoutDeadline(ctx)
+		ctx, cancel = m.js.wrapContextWithoutDeadline(ctx)
 		if cancel != nil {
 			defer cancel()
 		}
@@ -417,6 +418,9 @@ func checkMsg(msg *nats.Msg) (bool, error) {
 		if strings.Contains(strings.ToLower(descr), "message size exceeds maxbytes") {
 			return false, ErrMaxBytesExceeded
 		}
+		if strings.Contains(strings.ToLower(descr), "batch completed") {
+			return false, ErrBatchCompleted
+		}
 		if strings.Contains(strings.ToLower(descr), "consumer deleted") {
 			return false, ErrConsumerDeleted
 		}
@@ -434,7 +438,7 @@ func parsePending(msg *nats.Msg) (int, int, error) {
 	if msgsLeftStr != "" {
 		msgsLeft, err = strconv.Atoi(msgsLeftStr)
 		if err != nil {
-			return 0, 0, fmt.Errorf("nats: invalid format of Nats-Pending-Messages")
+			return 0, 0, errors.New("nats: invalid format of Nats-Pending-Messages")
 		}
 	}
 	bytesLeftStr := msg.Header.Get("Nats-Pending-Bytes")
@@ -442,7 +446,7 @@ func parsePending(msg *nats.Msg) (int, int, error) {
 	if bytesLeftStr != "" {
 		bytesLeft, err = strconv.Atoi(bytesLeftStr)
 		if err != nil {
-			return 0, 0, fmt.Errorf("nats: invalid format of Nats-Pending-Bytes")
+			return 0, 0, errors.New("nats: invalid format of Nats-Pending-Bytes")
 		}
 	}
 	return msgsLeft, bytesLeft, nil

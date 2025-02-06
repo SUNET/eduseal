@@ -28,7 +28,7 @@ import (
 
 type (
 	orderedConsumer struct {
-		jetStream         *jetStream
+		js                *jetStream
 		cfg               *OrderedConsumerConfig
 		stream            string
 		currentConsumer   *pullConsumer
@@ -393,24 +393,26 @@ func (s *orderedSubscription) Closed() <-chan struct{} {
 // reset the consumer for each subsequent Fetch call.
 // Consider using [Consumer.Consume] or [Consumer.Messages] instead.
 func (c *orderedConsumer) Fetch(batch int, opts ...FetchOpt) (MessageBatch, error) {
+	c.Lock()
 	if c.consumerType == consumerTypeConsume {
+		c.Unlock()
 		return nil, ErrOrderConsumerUsedAsConsume
 	}
-	c.currentConsumer.Lock()
 	if c.runningFetch != nil {
-		if !c.runningFetch.done {
-			c.currentConsumer.Unlock()
+		if !c.runningFetch.closed() {
 			return nil, ErrOrderedConsumerConcurrentRequests
 		}
-		c.cursor.streamSeq = c.runningFetch.sseq
+		if c.runningFetch.sseq != 0 {
+			c.cursor.streamSeq = c.runningFetch.sseq
+		}
 	}
-	c.currentConsumer.Unlock()
 	c.consumerType = consumerTypeFetch
 	sub := orderedSubscription{
 		consumer: c,
 		done:     make(chan struct{}),
 	}
 	c.subscription = &sub
+	c.Unlock()
 	err := c.reset()
 	if err != nil {
 		return nil, err
@@ -431,14 +433,18 @@ func (c *orderedConsumer) Fetch(batch int, opts ...FetchOpt) (MessageBatch, erro
 // reset the consumer for each subsequent Fetch call.
 // Consider using [Consumer.Consume] or [Consumer.Messages] instead.
 func (c *orderedConsumer) FetchBytes(maxBytes int, opts ...FetchOpt) (MessageBatch, error) {
+	c.Lock()
 	if c.consumerType == consumerTypeConsume {
+		c.Unlock()
 		return nil, ErrOrderConsumerUsedAsConsume
 	}
 	if c.runningFetch != nil {
-		if !c.runningFetch.done {
+		if !c.runningFetch.closed() {
 			return nil, ErrOrderedConsumerConcurrentRequests
 		}
-		c.cursor.streamSeq = c.runningFetch.sseq
+		if c.runningFetch.sseq != 0 {
+			c.cursor.streamSeq = c.runningFetch.sseq
+		}
 	}
 	c.consumerType = consumerTypeFetch
 	sub := orderedSubscription{
@@ -446,6 +452,7 @@ func (c *orderedConsumer) FetchBytes(maxBytes int, opts ...FetchOpt) (MessageBat
 		done:     make(chan struct{}),
 	}
 	c.subscription = &sub
+	c.Unlock()
 	err := c.reset()
 	if err != nil {
 		return nil, err
@@ -536,7 +543,7 @@ func (c *orderedConsumer) reset() error {
 		c.currentConsumer.Unlock()
 		go func() {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-			_ = c.jetStream.DeleteConsumer(ctx, c.stream, consName)
+			_ = c.js.DeleteConsumer(ctx, c.stream, consName)
 			cancel()
 		}()
 	}
@@ -561,7 +568,7 @@ func (c *orderedConsumer) reset() error {
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		cons, err = c.jetStream.CreateOrUpdateConsumer(ctx, c.stream, *consumerConfig)
+		cons, err = c.js.CreateOrUpdateConsumer(ctx, c.stream, *consumerConfig)
 		if err != nil {
 			return true, err
 		}
@@ -604,6 +611,7 @@ func (c *orderedConsumer) getConsumerConfig() *ConsumerConfig {
 		Replicas:          1,
 		HeadersOnly:       c.cfg.HeadersOnly,
 		MemoryStorage:     true,
+		Metadata:          c.cfg.Metadata,
 	}
 	if len(c.cfg.FilterSubjects) == 1 {
 		cfg.FilterSubject = c.cfg.FilterSubjects[0]
@@ -627,17 +635,15 @@ func (c *orderedConsumer) getConsumerConfig() *ConsumerConfig {
 		c.cfg.DeliverPolicy == DeliverAllPolicy {
 
 		cfg.OptStartSeq = 0
+	} else if c.cfg.DeliverPolicy == DeliverByStartTimePolicy {
+		cfg.OptStartSeq = 0
+		cfg.OptStartTime = c.cfg.OptStartTime
 	} else {
 		cfg.OptStartSeq = c.cfg.OptStartSeq
 	}
 
 	if cfg.DeliverPolicy == DeliverLastPerSubjectPolicy && len(c.cfg.FilterSubjects) == 0 {
 		cfg.FilterSubjects = []string{">"}
-	}
-	if c.cfg.OptStartTime != nil {
-		cfg.OptStartSeq = 0
-		cfg.DeliverPolicy = DeliverByStartTimePolicy
-		cfg.OptStartTime = c.cfg.OptStartTime
 	}
 
 	return cfg
@@ -682,10 +688,10 @@ func (c *orderedConsumer) Info(ctx context.Context) (*ConsumerInfo, error) {
 	if c.currentConsumer == nil {
 		return nil, ErrOrderedConsumerNotCreated
 	}
-	infoSubject := apiSubj(c.jetStream.apiPrefix, fmt.Sprintf(apiConsumerInfoT, c.stream, c.currentConsumer.name))
+	infoSubject := fmt.Sprintf(apiConsumerInfoT, c.stream, c.currentConsumer.name)
 	var resp consumerInfoResponse
 
-	if _, err := c.jetStream.apiRequestJSON(ctx, infoSubject, &resp); err != nil {
+	if _, err := c.js.apiRequestJSON(ctx, infoSubject, &resp); err != nil {
 		return nil, err
 	}
 	if resp.Error != nil {
@@ -747,7 +753,7 @@ func retryWithBackoff(f func(int) (bool, error), opts backoffOpts) error {
 	// if custom backoff is set, use it instead of other options
 	if len(opts.customBackoff) > 0 {
 		if opts.attempts != 0 {
-			return fmt.Errorf("cannot use custom backoff intervals when attempts are set")
+			return errors.New("cannot use custom backoff intervals when attempts are set")
 		}
 		for i, interval := range opts.customBackoff {
 			select {
@@ -774,7 +780,7 @@ func retryWithBackoff(f func(int) (bool, error), opts backoffOpts) error {
 		opts.maxInterval = 1 * time.Minute
 	}
 	if opts.attempts == 0 {
-		return fmt.Errorf("retry attempts have to be set when not using custom backoff intervals")
+		return errors.New("retry attempts have to be set when not using custom backoff intervals")
 	}
 	interval := opts.initialInterval
 	for i := 0; ; i++ {

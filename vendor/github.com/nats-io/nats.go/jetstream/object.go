@@ -1,4 +1,4 @@
-// Copyright 2023-2024 The NATS Authors
+// Copyright 2023-2025 The NATS Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -616,8 +616,17 @@ func (js *jetStream) ObjectStore(ctx context.Context, bucket string) (ObjectStor
 
 // DeleteObjectStore will delete the underlying stream for the named object.
 func (js *jetStream) DeleteObjectStore(ctx context.Context, bucket string) error {
+	if !validBucketRe.MatchString(bucket) {
+		return ErrInvalidStoreName
+	}
 	stream := fmt.Sprintf(objNameTmpl, bucket)
-	return js.DeleteStream(ctx, stream)
+	if err := js.DeleteStream(ctx, stream); err != nil {
+		if errors.Is(err, ErrStreamNotFound) {
+			err = errors.Join(fmt.Errorf("%w: %s", ErrBucketNotFound, bucket), err)
+		}
+		return err
+	}
+	return nil
 }
 
 func encodeName(name string) string {
