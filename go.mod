@@ -17,7 +17,7 @@ require (
 	github.com/lithammer/shortuuid/v4 v4.2.0
 	github.com/moogar0880/problems v0.1.1
 	github.com/nats-io/nats.go v1.39.0
-	github.com/redis/go-redis/v9 v9.7.0
+	github.com/redis/go-redis/v9 v9.7.3
 	github.com/stretchr/testify v1.10.0
 	github.com/swaggo/files v1.0.1
 	github.com/swaggo/gin-swagger v1.6.0
