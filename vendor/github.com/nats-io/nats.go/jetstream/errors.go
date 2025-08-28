@@ -1,4 +1,4 @@
-// Copyright 2022-2024 The NATS Authors
+// Copyright 2022-2025 The NATS Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -118,6 +118,11 @@ var (
 	// does not exist.
 	ErrConsumerNotFound JetStreamError = &jsError{apiErr: &APIError{ErrorCode: JSErrCodeConsumerNotFound, Description: "consumer not found", Code: 404}}
 
+	// ErrConsumerCreationResponseEmpty is an error returned when the response from the server
+	// when creating a consumer is empty. This means that the state of the consumer is unknown and
+	// the consumer may not have been created successfully.
+	ErrConsumerCreationResponseEmpty JetStreamError = &jsError{message: "consumer creation response is empty"}
+
 	// ErrConsumerExists is returned when attempting to create a consumer with
 	// CreateConsumer but a consumer with given name already exists.
 	ErrConsumerExists JetStreamError = &jsError{apiErr: &APIError{ErrorCode: JSErrCodeConsumerExists, Description: "consumer already exists", Code: 400}}
@@ -161,6 +166,18 @@ var (
 	// does not exist.
 	ErrConsumerNameAlreadyInUse JetStreamError = &jsError{message: "consumer name already in use"}
 
+	// ErrNotPullConsumer is returned when attempting to fetch or create pull
+	// consumer and the returned consumer is a push consumer.
+	ErrNotPullConsumer JetStreamError = &jsError{message: "consumer is not a pull consumer"}
+
+	// ErrNotPushConsumer is returned when attempting to fetch or create push
+	// consumer and the returned consumer is a pull consumer.
+	ErrNotPushConsumer JetStreamError = &jsError{message: "consumer is not a push consumer"}
+
+	// ErrConsumerAlreadyConsuming is returned when attempting to consume from
+	// the same push consumer more than once.
+	ErrConsumerAlreadyConsuming JetStreamError = &jsError{message: "consumer is already consuming"}
+
 	// ErrInvalidJSAck is returned when JetStream ack from message publish is
 	// invalid.
 	ErrInvalidJSAck JetStreamError = &jsError{message: "invalid jetstream publish response"}
@@ -194,6 +211,10 @@ var (
 	// ErrNoMessages is returned when no messages are currently available for a
 	// consumer.
 	ErrNoMessages JetStreamError = &jsError{message: "no messages"}
+
+	// ErrPinIDMismatch is returned when Pin ID sent in the request does not match
+	// the currently pinned consumer subscriber ID on the server.
+	ErrPinIDMismatch JetStreamError = &jsError{message: "pin ID mismatch"}
 
 	// ErrMaxBytesExceeded is returned when a message would exceed MaxBytes set
 	// on a pull request.
@@ -255,6 +276,14 @@ var (
 	// closed iterator.
 	ErrMsgIteratorClosed JetStreamError = &jsError{message: "messages iterator closed"}
 
+	// ErrConnectionClosed is returned when JetStream operations fail due to
+	// underlying connection being closed.
+	ErrConnectionClosed JetStreamError = &jsError{message: "connection closed"}
+
+	// ErrServerShutdown is returned when pull request fails due to server
+	// shutdown.
+	ErrServerShutdown JetStreamError = &jsError{message: "server shutdown"}
+
 	// ErrOrderedConsumerReset is returned when resetting ordered consumer fails
 	// due to too many attempts.
 	ErrOrderedConsumerReset JetStreamError = &jsError{message: "recreating ordered consumer"}
@@ -277,6 +306,9 @@ var (
 
 	// ErrJetStreamPublisherClosed is returned for each unfinished ack future when JetStream.Cleanup is called.
 	ErrJetStreamPublisherClosed JetStreamError = &jsError{message: "jetstream context closed"}
+
+	// ErrAsyncPublishTimeout is returned when waiting for ack on async publish
+	ErrAsyncPublishTimeout JetStreamError = &jsError{message: "timeout waiting for ack"}
 
 	// KeyValue Errors
 
@@ -322,6 +354,14 @@ var (
 
 	// ErrNoKeysFound is returned when no keys are found.
 	ErrNoKeysFound JetStreamError = &jsError{message: "no keys found"}
+
+	// ErrTTLOnDeleteNotSupported is returned when attempting to set a TTL
+	// on a delete operation.
+	ErrTTLOnDeleteNotSupported JetStreamError = &jsError{message: "TTL is not supported on delete"}
+
+	// ErrLimitMarkerTTLNotSupported is returned when the connected jetstream API
+	// does not support setting the LimitMarkerTTL.
+	ErrLimitMarkerTTLNotSupported JetStreamError = &jsError{message: "limit marker TTLs not supported by server"}
 
 	// ErrObjectConfigRequired is returned when attempting to create an object
 	// without a config.

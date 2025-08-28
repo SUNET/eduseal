@@ -31,7 +31,7 @@ func (fn pullOptFunc) configureMessages(opts *consumeOpts) error {
 // WithClientTrace enables request/response API calls tracing.
 func WithClientTrace(ct *ClientTrace) JetStreamOpt {
 	return func(opts *JetStreamOptions) error {
-		opts.clientTrace = ct
+		opts.ClientTrace = ct
 		return nil
 	}
 }
@@ -52,6 +52,28 @@ func WithPublishAsyncMaxPending(max int) JetStreamOpt {
 			return fmt.Errorf("%w: max ack pending should be >= 1", ErrInvalidOption)
 		}
 		opts.publisherOpts.maxpa = max
+		return nil
+	}
+}
+
+// WithPublishAsyncTimeout sets the timeout for async message publish.
+// If not provided, timeout is disabled.
+func WithPublishAsyncTimeout(dur time.Duration) JetStreamOpt {
+	return func(opts *JetStreamOptions) error {
+		opts.publisherOpts.ackTimeout = dur
+		return nil
+	}
+}
+
+// WithDefaultTimeout sets the default timeout for JetStream API requests.
+// It is used when context used for the request does not have a deadline set.
+// If not provided, a default of 5 seconds will be used.
+func WithDefaultTimeout(timeout time.Duration) JetStreamOpt {
+	return func(opts *JetStreamOptions) error {
+		if timeout <= 0 {
+			return fmt.Errorf("%w: timeout value must be greater than 0", ErrInvalidOption)
+		}
+		opts.DefaultTimeout = timeout
 		return nil
 	}
 }
@@ -275,6 +297,73 @@ func (t PullThresholdBytes) configureMessages(opts *consumeOpts) error {
 	return nil
 }
 
+// PullMinPending sets the minimum number of messages that should be pending for
+// a consumer with PriorityPolicyOverflow to be considered for delivery.
+// If provided, PullPriorityGroup must be set as well and the consumer has to have
+// PriorityPolicy set to PriorityPolicyOverflow.
+//
+// PullMinPending implements both PullConsumeOpt and PullMessagesOpt, allowing
+// it to configure Consumer.Consume and Consumer.Messages.
+type PullMinPending int
+
+func (min PullMinPending) configureConsume(opts *consumeOpts) error {
+	if min < 1 {
+		return fmt.Errorf("%w: min pending should be more than 0", ErrInvalidOption)
+	}
+	opts.MinPending = int64(min)
+	return nil
+}
+
+func (min PullMinPending) configureMessages(opts *consumeOpts) error {
+	if min < 1 {
+		return fmt.Errorf("%w: min pending should be more than 0", ErrInvalidOption)
+	}
+	opts.MinPending = int64(min)
+	return nil
+}
+
+// PullMinAckPending sets the minimum number of pending acks that should be
+// present for a consumer with PriorityPolicyOverflow to be considered for
+// delivery. If provided, PullPriorityGroup must be set as well and the consumer
+// has to have PriorityPolicy set to PriorityPolicyOverflow.
+//
+// PullMinAckPending implements both PullConsumeOpt and PullMessagesOpt, allowing
+// it to configure Consumer.Consume and Consumer.Messages.
+type PullMinAckPending int
+
+func (min PullMinAckPending) configureConsume(opts *consumeOpts) error {
+	if min < 1 {
+		return fmt.Errorf("%w: min pending should be more than 0", ErrInvalidOption)
+	}
+	opts.MinAckPending = int64(min)
+	return nil
+}
+
+func (min PullMinAckPending) configureMessages(opts *consumeOpts) error {
+	if min < 1 {
+		return fmt.Errorf("%w: min pending should be more than 0", ErrInvalidOption)
+	}
+	opts.MinAckPending = int64(min)
+	return nil
+}
+
+// PullPriorityGroup sets the priority group for a consumer.
+// It has to match one of the priority groups set on the consumer.
+//
+// PullPriorityGroup implements both PullConsumeOpt and PullMessagesOpt, allowing
+// it to configure Consumer.Consume and Consumer.Messages.
+type PullPriorityGroup string
+
+func (g PullPriorityGroup) configureConsume(opts *consumeOpts) error {
+	opts.Group = string(g)
+	return nil
+}
+
+func (g PullPriorityGroup) configureMessages(opts *consumeOpts) error {
+	opts.Group = string(g)
+	return nil
+}
+
 // PullHeartbeat sets the idle heartbeat duration for a pull subscription
 // If a client does not receive a heartbeat message from a stream for more
 // than the idle heartbeat setting, the subscription will be removed
@@ -330,11 +419,16 @@ func (nMsgs StopAfter) configureMessages(opts *consumeOpts) error {
 // encountered while consuming messages It will be invoked for both terminal
 // (Consumer Deleted, invalid request body) and non-terminal (e.g. missing
 // heartbeats) errors.
-func ConsumeErrHandler(cb ConsumeErrHandlerFunc) PullConsumeOpt {
-	return pullOptFunc(func(cfg *consumeOpts) error {
-		cfg.ErrHandler = cb
-		return nil
-	})
+type ConsumeErrHandler ConsumeErrHandlerFunc
+
+func (c ConsumeErrHandler) configureConsume(opts *consumeOpts) error {
+	opts.ErrHandler = c
+	return nil
+}
+
+func (c ConsumeErrHandler) configurePushConsume(opts *pushConsumeOpts) error {
+	opts.ErrHandler = c
+	return nil
 }
 
 // WithMessagesErrOnMissingHeartbeat sets whether a missing heartbeat error
@@ -344,6 +438,43 @@ func WithMessagesErrOnMissingHeartbeat(hbErr bool) PullMessagesOpt {
 		cfg.ReportMissingHeartbeats = hbErr
 		return nil
 	})
+}
+
+// FetchMinPending sets the minimum number of messages that should be pending for
+// a consumer with PriorityPolicyOverflow to be considered for delivery.
+// If provided, FetchPriorityGroup must be set as well and the consumer has to have
+// PriorityPolicy set to PriorityPolicyOverflow.
+func FetchMinPending(min int64) FetchOpt {
+	return func(req *pullRequest) error {
+		if min < 1 {
+			return fmt.Errorf("%w: min pending should be more than 0", ErrInvalidOption)
+		}
+		req.MinPending = min
+		return nil
+	}
+}
+
+// FetchMinAckPending sets the minimum number of pending acks that should be
+// present for a consumer with PriorityPolicyOverflow to be considered for
+// delivery. If provided, FetchPriorityGroup must be set as well and the consumer
+// has to have PriorityPolicy set to PriorityPolicyOverflow.
+func FetchMinAckPending(min int64) FetchOpt {
+	return func(req *pullRequest) error {
+		if min < 1 {
+			return fmt.Errorf("%w: min ack pending should be more than 0", ErrInvalidOption)
+		}
+		req.MinAckPending = min
+		return nil
+	}
+}
+
+// FetchPriorityGroup sets the priority group for a consumer.
+// It has to match one of the priority groups set on the consumer.
+func FetchPriorityGroup(group string) FetchOpt {
+	return func(req *pullRequest) error {
+		req.Group = group
+		return nil
+	}
 }
 
 // FetchMaxWait sets custom timeout for fetching predefined batch of messages.
@@ -416,6 +547,15 @@ func WithMsgID(id string) PublishOpt {
 	}
 }
 
+// WithMsgTTL sets per msg TTL.
+// Requires [StreamConfig.AllowMsgTTL] to be enabled.
+func WithMsgTTL(dur time.Duration) PublishOpt {
+	return func(opts *pubOpts) error {
+		opts.ttl = dur
+		return nil
+	}
+}
+
 // WithExpectStream sets the expected stream the message should be published to.
 // If the message is published to a different stream server will reject the
 // message and publish will fail.
@@ -443,6 +583,21 @@ func WithExpectLastSequence(seq uint64) PublishOpt {
 func WithExpectLastSequencePerSubject(seq uint64) PublishOpt {
 	return func(opts *pubOpts) error {
 		opts.lastSubjectSeq = &seq
+		return nil
+	}
+}
+
+// WithExpectLastSequenceForSubject sets the sequence and subject for which the
+// last sequence number should be checked. If the last message on a subject
+// has a different sequence number server will reject the message and publish
+// will fail.
+func WithExpectLastSequenceForSubject(seq uint64, subject string) PublishOpt {
+	return func(opts *pubOpts) error {
+		if subject == "" {
+			return fmt.Errorf("%w: subject cannot be empty", ErrInvalidOption)
+		}
+		opts.lastSubjectSeq = &seq
+		opts.lastSubject = subject
 		return nil
 	}
 }
