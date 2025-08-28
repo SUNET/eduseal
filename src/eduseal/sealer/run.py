@@ -22,7 +22,6 @@ from eduseal.sealer.config import parse, CFG
 
 import asyncio
 from nats.aio.client import Client as NATS
-from nats.js.api import ConsumerConfig
 
 class Common():
     def __init__(self) -> None:
