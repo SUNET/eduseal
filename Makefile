@@ -66,12 +66,13 @@ DOCKER_TAG_APIGW 				:= docker.sunet.se/eduseal/apigw:$(VERSION)
 DOCKER_TAG_GOBUILD 				:= docker.sunet.se/eduseal/gobuild:$(VERSION)
 DOCKER_TAG_SEALER_SECTIGO		:= docker.sunet.se/eduseal/sealer_sectigo:$(VERSION)
 DOCKER_TAG_SEALER_SOFTHSM		:= docker.sunet.se/eduseal/sealer_softhsm:$(VERSION)
+DOCKER_TAG_SEALER_LUNAHSM		:= docker.sunet.se/eduseal/sealer_lunahsm:$(VERSION)
 DOCKER_TAG_VALIDATOR			:= docker.sunet.se/eduseal/validator:$(VERSION)
 
 
 #### Docker build
 docker-build-non-pkcs11-containers: docker-build-apigw docker-build-validator
-docker-build-sectigo: docker-build-non-pkcs11-containers docker-build-sealer-sectigo
+docker-build: docker-build-non-pkcs11-containers docker-build-sealer-lunahsm
 docker-build-softhsm: docker-build-non-pkcs11-containers docker-build-sealer-softhsm
 
 docker-build-apigw:
@@ -85,6 +86,10 @@ docker-build-sealer-sectigo:
 docker-build-sealer-softhsm:
 	$(info building docker image $(DOCKER_TAG_SEALER_SOFTHSM) )
 	docker build --tag $(DOCKER_TAG_SEALER_SOFTHSM) --file docker/sealer/softhsm/Dockerfile .
+
+docker-build-sealer-lunahsm:
+	$(info building docker image $(DOCKER_TAG_SEALER_LUNAHSM) )
+	docker build --tag $(DOCKER_TAG_SEALER_LUNAHSM) --file docker/sealer/lunahsm/Dockerfile .
 
 docker-build-validator:
 	$(info building docker image $(DOCKER_TAG_VALIDATOR) )
@@ -102,13 +107,17 @@ docker-push-apigw:
 	$(info Pushing docker images)
 	docker push $(DOCKER_TAG_APIGW)
 
+docker-push-sealer-sectigo:
+	$(info Pushing docker image)
+	docker push $(DOCKER_TAG_SEALER_SECTIGO)
+
 docker-push-sealer-softhsm:
 	$(info Pushing docker image)
 	docker push $(DOCKER_TAG_SEALER_SOFTHSM)
 
-docker-push-sealer-sectigo:
+docker-push-sealer-lunahsm:
 	$(info Pushing docker image)
-	docker push $(DOCKER_TAG_SEALER_SECTIGO)
+	docker push $(DOCKER_TAG_SEALER_LUNAHSM)
 
 docker-push-validator:
 	$(info Pushing docker image)
@@ -204,13 +213,18 @@ clean-apt-cache:
 	$(info Cleaning apt cache)
 	rm -rf /var/lib/apt/lists/*
 
+
+diagram:
+	plantuml docs/diagrams/*.puml
+
 vscode:
 	$(info Install APT packages)
 	sudo apt-get update && sudo apt-get install -y \
 		protobuf-compiler \
 		netcat-openbsd \
 		python3-pip \
-		python3.11-venv
+		python3.11-venv \
+		plantuml
 	$(info Install go packages)
 	go install github.com/swaggo/swag/cmd/swag@latest && \
 	go install google.golang.org/protobuf/cmd/protoc-gen-go@latest && \
