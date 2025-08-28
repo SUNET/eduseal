@@ -1,0 +1,21 @@
+@startuml
+
+autonumber
+participant Ladok as ladok
+participant Loadbalancer as lb
+
+ladok -> lb: POST /api/v1/pdf/sign
+lb -> car: 
+car -> queue: put msg <uuid> to queue: SEAL
+car -> ladok: <uuid>
+
+loop / 1 second
+    ladok -> lb: GET /api/v1/pdf/<uuid>
+end
+
+sealer -> queue: takes msg <uuid> from queue: SEAL and signs it
+sealer -> queue: put signed msg <uuid> to queue: CACHE
+car -> queue: takes msg <uuid> from queue CACHE
+car -> kv: store msg <uuid> in cache, ttl 10 seconds
+
+@enduml
