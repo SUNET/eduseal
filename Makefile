@@ -100,7 +100,7 @@ docker-build-gobuild:
 	docker build --tag $(DOCKER_TAG_GOBUILD) --file docker/gobuild .
 
 #### Docker push
-docker-push: docker-push-apigw docker-push-sealer-sectigo docker-push-sealer-softhsm docker-push-validator
+docker-push: docker-push-apigw docker-push-sealer-lunahsm docker-push-validator
 	$(info Pushing docker images)
 
 docker-push-apigw:
