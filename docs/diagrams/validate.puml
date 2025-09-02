@@ -7,7 +7,7 @@ participant Loadbalancer as lb
 ladok -> lb: POST /api/v1/pdf/validate
 lb -> car: 
 car -> validator: gRPC
-validator -> car: json body with response
+validator -> car: json body response
 car -> ladok: response
 
 @enduml
