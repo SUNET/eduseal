@@ -12,12 +12,11 @@ import (
 )
 
 type sealStream struct {
-	service         *Service
-	log             *logger.Log
-	stream          jetstream.Stream
-	js              jetstream.JetStream
-	consumer        jetstream.Consumer
-	consumerContext jetstream.ConsumeContext
+	service  *Service
+	log      *logger.Log
+	stream   jetstream.Stream
+	js       jetstream.JetStream
+	consumer jetstream.Consumer
 }
 
 func newSealStream(ctx context.Context, service *Service) (*sealStream, error) {

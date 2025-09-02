@@ -42,7 +42,7 @@ func newCacheStream(ctx context.Context, service *Service) (*cacheStream, error)
 }
 
 func (s *cacheStream) jetstreamInit(ctx context.Context) error {
-	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	_, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
 	var err error
@@ -105,12 +105,18 @@ func (s *cacheStream) createStream(ctx context.Context) error {
 func (s *cacheStream) Consume(ctx context.Context) error {
 	var err error
 	s.consumerContext, err = s.consumer.Consume(func(m jetstream.Msg) {
-		m.InProgress()
+		if err := m.InProgress(); err != nil {
+			s.log.Error(err, "Failed to mark message in progress")
+			return
+		}
+
 		s.log.Debug("Received message", "subject", m.Subject(), "transaction_id", m.Headers().Get("Nats-Msg-Id"))
 		document := &model.Document{}
 		if err := json.Unmarshal(m.Data(), document); err != nil {
 			s.log.Error(err, "Failed to unmarshal")
-			m.Nak()
+			if err := m.Nak(); err != nil {
+				s.log.Error(err, "Failed to Nack message")
+			}
 		}
 		if err := s.service.kv.Doc.SaveSigned(ctx, &model.Document{
 			TransactionID: document.TransactionID,
@@ -118,9 +124,13 @@ func (s *cacheStream) Consume(ctx context.Context) error {
 			SealerBackend: document.SealerBackend,
 		}); err != nil {
 			s.log.Error(err, "Failed to cache signed document")
-			m.Nak()
+			if err := m.Nak(); err != nil {
+				s.log.Error(err, "Failed to Nack message")
+			}
 		}
-		m.Ack()
+		if err := m.Ack(); err != nil {
+			s.log.Error(err, "Failed to Ack message")
+		}
 	})
 	if err != nil {
 		s.log.Error(err, "Failed to consume")

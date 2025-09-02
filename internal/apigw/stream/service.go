@@ -104,7 +104,7 @@ func (s *Service) connect(ctx context.Context) error {
 }
 
 func (s *Service) probe(ctx context.Context) {
-	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
+	_, cancel := context.WithTimeout(ctx, 1*time.Second)
 	defer cancel()
 
 	s.probeStore.PreviousResult = &v1_status.StatusProbe{
@@ -121,7 +121,7 @@ func (s *Service) probe(ctx context.Context) {
 
 // Status returns the status of the database
 func (s *Service) Status(ctx context.Context) *v1_status.StatusProbe {
-	ctx, span := s.tp.Start(ctx, "stream:Status")
+	_, span := s.tp.Start(ctx, "stream:Status")
 	defer span.End()
 
 	return s.probeStore.PreviousResult

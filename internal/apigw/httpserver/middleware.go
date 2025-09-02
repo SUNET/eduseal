@@ -3,7 +3,6 @@ package httpserver
 import (
 	"context"
 	"eduseal/pkg/helpers"
-	"fmt"
 	"strings"
 	"time"
 
@@ -45,19 +44,6 @@ func (s *Service) middlewareCrash(ctx context.Context) gin.HandlerFunc {
 				renderContent(c, 500, gin.H{"data": nil, "error": err.Error()})
 			}
 		}()
-		c.Next()
-	}
-}
-
-func (s *Service) middlewareClientCertAuth(ctx context.Context) gin.HandlerFunc {
-	_, span := s.tp.Start(ctx, "httpserver:middlewareClientCertAuth")
-	defer span.End()
-
-	log := s.logger.New("http")
-	return func(c *gin.Context) {
-		clientCertSHA1 := c.Request.Header.Get("X-SSL-Client-SHA1")
-		log.Info("clientCertSHA1", "clientCertSHA1", clientCertSHA1)
-		fmt.Println("clientCertSHA1", clientCertSHA1)
 		c.Next()
 	}
 }

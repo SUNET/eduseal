@@ -2,7 +2,6 @@ package httpserver
 
 import (
 	"context"
-	"crypto/tls"
 	"eduseal/internal/apigw/apiv1"
 	"eduseal/pkg/helpers"
 	"eduseal/pkg/logger"
@@ -21,13 +20,12 @@ import (
 
 // Service is the service object for httpserver
 type Service struct {
-	config    *model.Cfg
-	logger    *logger.Log
-	server    *http.Server
-	apiv1     Apiv1
-	gin       *gin.Engine
-	tlsConfig *tls.Config
-	tp        *trace.Tracer
+	config *model.Cfg
+	logger *logger.Log
+	server *http.Server
+	apiv1  Apiv1
+	gin    *gin.Engine
+	tp     *trace.Tracer
 }
 
 // New creates a new httpserver service
@@ -68,10 +66,7 @@ func New(ctx context.Context, config *model.Cfg, api *apiv1.Client, tp *trace.Tr
 	s.gin.Use(s.middlewareRequestID(ctx))
 	s.gin.Use(s.middlewareLogger(ctx))
 	s.gin.Use(s.middlewareCrash(ctx))
-	problem404, err := helpers.Problem404()
-	if err != nil {
-		return nil, err
-	}
+	problem404 := helpers.Problem404()
 	s.gin.NoRoute(func(c *gin.Context) { c.JSON(http.StatusNotFound, problem404) })
 
 	rgRoot := s.gin.Group("/")
@@ -105,7 +100,7 @@ func New(ctx context.Context, config *model.Cfg, api *apiv1.Client, tp *trace.Tr
 				s.logger.Error(err, "listen_and_server_tls")
 			}
 		} else {
-			err = s.server.ListenAndServe()
+			err := s.server.ListenAndServe()
 			s.logger.Info("TLS disabled")
 			if err != nil {
 				s.logger.Error(err, "listen_and_server")
