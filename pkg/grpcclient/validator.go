@@ -18,10 +18,12 @@ func (c *Validator) Validate(ctx context.Context, transactionID, data string) (*
 	defer span.End()
 
 	conn, err := c.client.rrConn(ctx, c.scheme, c.client.cfg.Common.ValidatorServiceName)
-	defer conn.Close()
 	if err != nil {
 		return nil, err
 	}
+
+	defer conn.Close()
+
 	grpcClient := v1_validator.NewValidatorClient(conn)
 
 	validation, err := grpcClient.Validate(ctx, &v1_validator.ValidateRequest{Data: data})

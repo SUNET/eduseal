@@ -19,7 +19,6 @@ type Client struct {
 	tp  *trace.Tracer
 
 	Validator *Validator
-	Sealer    *Sealer
 }
 
 // New creates a new instance of the gRPC client
@@ -38,15 +37,6 @@ func New(ctx context.Context, cfg *model.Cfg, tp *trace.Tracer, log *logger.Log)
 		},
 	}
 	resolver.Register(c.Validator)
-
-	c.Sealer = &Sealer{
-		client: c,
-		scheme: "sealer",
-		DNS: map[string][]string{
-			c.cfg.Common.SealerServiceName: cfg.Common.SealerNodes,
-		},
-	}
-	resolver.Register(c.Sealer)
 
 	return c, nil
 }

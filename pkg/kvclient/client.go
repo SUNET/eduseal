@@ -108,7 +108,7 @@ func (c *Client) probe(ctx context.Context) {
 
 // Status returns the status of the database
 func (c *Client) Status(ctx context.Context) *v1_status.StatusProbe {
-	ctx, span := c.tp.Start(ctx, "kv:Status")
+	_, span := c.tp.Start(ctx, "kv:Status")
 	defer span.End()
 
 	return c.probeStore.PreviousResult

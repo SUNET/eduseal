@@ -28,7 +28,9 @@ func (r *validatorResolver) start() {
 	for i, s := range addrStrs {
 		addrs[i] = resolver.Address{Addr: s}
 	}
-	r.cc.UpdateState(resolver.State{Addresses: addrs})
+	if err := r.cc.UpdateState(resolver.State{Addresses: addrs}); err != nil {
+		r.cc.ReportError(err)
+	}
 }
 func (*validatorResolver) ResolveNow(o resolver.ResolveNowOptions) {}
 func (*validatorResolver) Close()                                  {}
