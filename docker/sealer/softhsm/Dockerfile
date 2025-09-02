@@ -22,7 +22,7 @@ RUN apt-get update && apt-get install -y \
     opensc \
     usbutils \
     libpcsclite1 \
-    libgdk-pixbuf2.0-0 \
+    libgdk-pixbuf-xlib-2.0-0 \
     libgtk2.0-0 \
     softhsm2 
 #libsnappy-dev \

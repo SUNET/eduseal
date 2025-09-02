@@ -23,7 +23,6 @@ RUN apt-get update && apt-get install -y \
     opensc \
     usbutils \
     libpcsclite1 \
-    libgdk-pixbuf2.0-0 \
     libgtk2.0-0 \
     libpango-1.0-0
 
