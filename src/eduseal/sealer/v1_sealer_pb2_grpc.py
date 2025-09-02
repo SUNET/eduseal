@@ -3,7 +3,7 @@
 import grpc
 import warnings
 
-import v1_sealer_pb2 as v1__sealer__pb2
+import eduseal.sealer.v1_sealer_pb2 as v1__sealer__pb2
 
 GRPC_GENERATED_VERSION = '1.74.0'
 GRPC_VERSION = grpc.__version__

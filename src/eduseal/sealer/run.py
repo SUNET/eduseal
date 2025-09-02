@@ -150,7 +150,7 @@ class Sealer(Common, pb2_grpc.SealerServicer):
             error="",
         )
 
-class QueueServer4(Common):
+class QueueServer(Common):
     def __init__(self) -> None:
         super().__init__()
         self.sealer = Sealer()
@@ -230,7 +230,7 @@ class QueueServer4(Common):
             await help_request(msgs[0])
 
 if __name__ == "__main__":
-    server = QueueServer4()
+    server = QueueServer()
     loop = asyncio.get_event_loop()
     try:
         loop.run_until_complete(server.start())
