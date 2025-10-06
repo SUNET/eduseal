@@ -6,6 +6,10 @@ import "google/protobuf/timestamp.proto";
 
 option go_package = "eduseal/internal/gen/status/v1_status";
 
+service Heartbeat {
+    rpc Beat (StatusRequest) returns (BeatReply) {}
+}
+
 
 message StatusRequest {}
 
@@ -17,6 +21,10 @@ message StatusReply {
         string status = 4;
     }
     Data data = 10;
+}
+
+message BeatReply {
+    bool OK = 1;
 }
 
 message StatusProbe {

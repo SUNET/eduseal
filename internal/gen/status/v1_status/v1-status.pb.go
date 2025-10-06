@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.8
 // 	protoc        v3.21.12
-// source: v1-status-model.proto
+// source: v1-status.proto
 
 package v1_status
 
@@ -30,7 +30,7 @@ type StatusRequest struct {
 
 func (x *StatusRequest) Reset() {
 	*x = StatusRequest{}
-	mi := &file_v1_status_model_proto_msgTypes[0]
+	mi := &file_v1_status_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -42,7 +42,7 @@ func (x *StatusRequest) String() string {
 func (*StatusRequest) ProtoMessage() {}
 
 func (x *StatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_v1_status_model_proto_msgTypes[0]
+	mi := &file_v1_status_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -55,7 +55,7 @@ func (x *StatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StatusRequest.ProtoReflect.Descriptor instead.
 func (*StatusRequest) Descriptor() ([]byte, []int) {
-	return file_v1_status_model_proto_rawDescGZIP(), []int{0}
+	return file_v1_status_proto_rawDescGZIP(), []int{0}
 }
 
 type StatusReply struct {
@@ -67,7 +67,7 @@ type StatusReply struct {
 
 func (x *StatusReply) Reset() {
 	*x = StatusReply{}
-	mi := &file_v1_status_model_proto_msgTypes[1]
+	mi := &file_v1_status_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -79,7 +79,7 @@ func (x *StatusReply) String() string {
 func (*StatusReply) ProtoMessage() {}
 
 func (x *StatusReply) ProtoReflect() protoreflect.Message {
-	mi := &file_v1_status_model_proto_msgTypes[1]
+	mi := &file_v1_status_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -92,7 +92,7 @@ func (x *StatusReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StatusReply.ProtoReflect.Descriptor instead.
 func (*StatusReply) Descriptor() ([]byte, []int) {
-	return file_v1_status_model_proto_rawDescGZIP(), []int{1}
+	return file_v1_status_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *StatusReply) GetData() *StatusReply_Data {
@@ -100,6 +100,50 @@ func (x *StatusReply) GetData() *StatusReply_Data {
 		return x.Data
 	}
 	return nil
+}
+
+type BeatReply struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	OK            bool                   `protobuf:"varint,1,opt,name=OK,proto3" json:"OK,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BeatReply) Reset() {
+	*x = BeatReply{}
+	mi := &file_v1_status_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BeatReply) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BeatReply) ProtoMessage() {}
+
+func (x *BeatReply) ProtoReflect() protoreflect.Message {
+	mi := &file_v1_status_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BeatReply.ProtoReflect.Descriptor instead.
+func (*BeatReply) Descriptor() ([]byte, []int) {
+	return file_v1_status_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *BeatReply) GetOK() bool {
+	if x != nil {
+		return x.OK
+	}
+	return false
 }
 
 type StatusProbe struct {
@@ -114,7 +158,7 @@ type StatusProbe struct {
 
 func (x *StatusProbe) Reset() {
 	*x = StatusProbe{}
-	mi := &file_v1_status_model_proto_msgTypes[2]
+	mi := &file_v1_status_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -126,7 +170,7 @@ func (x *StatusProbe) String() string {
 func (*StatusProbe) ProtoMessage() {}
 
 func (x *StatusProbe) ProtoReflect() protoreflect.Message {
-	mi := &file_v1_status_model_proto_msgTypes[2]
+	mi := &file_v1_status_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -139,7 +183,7 @@ func (x *StatusProbe) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StatusProbe.ProtoReflect.Descriptor instead.
 func (*StatusProbe) Descriptor() ([]byte, []int) {
-	return file_v1_status_model_proto_rawDescGZIP(), []int{2}
+	return file_v1_status_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *StatusProbe) GetName() string {
@@ -185,7 +229,7 @@ type BuildVariables struct {
 
 func (x *BuildVariables) Reset() {
 	*x = BuildVariables{}
-	mi := &file_v1_status_model_proto_msgTypes[3]
+	mi := &file_v1_status_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -197,7 +241,7 @@ func (x *BuildVariables) String() string {
 func (*BuildVariables) ProtoMessage() {}
 
 func (x *BuildVariables) ProtoReflect() protoreflect.Message {
-	mi := &file_v1_status_model_proto_msgTypes[3]
+	mi := &file_v1_status_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -210,7 +254,7 @@ func (x *BuildVariables) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BuildVariables.ProtoReflect.Descriptor instead.
 func (*BuildVariables) Descriptor() ([]byte, []int) {
-	return file_v1_status_model_proto_rawDescGZIP(), []int{3}
+	return file_v1_status_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *BuildVariables) GetGitCommit() string {
@@ -272,7 +316,7 @@ type StatusProbeStore struct {
 
 func (x *StatusProbeStore) Reset() {
 	*x = StatusProbeStore{}
-	mi := &file_v1_status_model_proto_msgTypes[4]
+	mi := &file_v1_status_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -284,7 +328,7 @@ func (x *StatusProbeStore) String() string {
 func (*StatusProbeStore) ProtoMessage() {}
 
 func (x *StatusProbeStore) ProtoReflect() protoreflect.Message {
-	mi := &file_v1_status_model_proto_msgTypes[4]
+	mi := &file_v1_status_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -297,7 +341,7 @@ func (x *StatusProbeStore) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StatusProbeStore.ProtoReflect.Descriptor instead.
 func (*StatusProbeStore) Descriptor() ([]byte, []int) {
-	return file_v1_status_model_proto_rawDescGZIP(), []int{4}
+	return file_v1_status_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *StatusProbeStore) GetNextCheck() *timestamppb.Timestamp {
@@ -326,7 +370,7 @@ type StatusReply_Data struct {
 
 func (x *StatusReply_Data) Reset() {
 	*x = StatusReply_Data{}
-	mi := &file_v1_status_model_proto_msgTypes[5]
+	mi := &file_v1_status_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -338,7 +382,7 @@ func (x *StatusReply_Data) String() string {
 func (*StatusReply_Data) ProtoMessage() {}
 
 func (x *StatusReply_Data) ProtoReflect() protoreflect.Message {
-	mi := &file_v1_status_model_proto_msgTypes[5]
+	mi := &file_v1_status_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -351,7 +395,7 @@ func (x *StatusReply_Data) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StatusReply_Data.ProtoReflect.Descriptor instead.
 func (*StatusReply_Data) Descriptor() ([]byte, []int) {
-	return file_v1_status_model_proto_rawDescGZIP(), []int{1, 0}
+	return file_v1_status_proto_rawDescGZIP(), []int{1, 0}
 }
 
 func (x *StatusReply_Data) GetServiceName() string {
@@ -382,11 +426,11 @@ func (x *StatusReply_Data) GetStatus() string {
 	return ""
 }
 
-var File_v1_status_model_proto protoreflect.FileDescriptor
+var File_v1_status_proto protoreflect.FileDescriptor
 
-const file_v1_status_model_proto_rawDesc = "" +
+const file_v1_status_proto_rawDesc = "" +
 	"\n" +
-	"\x15v1-status-model.proto\x12\tv1.status\x1a\x1fgoogle/protobuf/timestamp.proto\"\x0f\n" +
+	"\x0fv1-status.proto\x12\tv1.status\x1a\x1fgoogle/protobuf/timestamp.proto\"\x0f\n" +
 	"\rStatusRequest\"\xf5\x01\n" +
 	"\vStatusReply\x12/\n" +
 	"\x04data\x18\n" +
@@ -395,7 +439,9 @@ const file_v1_status_model_proto_rawDesc = "" +
 	"\vserviceName\x18\x01 \x01(\tR\vserviceName\x12B\n" +
 	"\x0fbuild_variables\x18\x02 \x01(\v2\x19.v1.status.BuildVariablesR\x0ebuildVariables\x12.\n" +
 	"\x06probes\x18\x03 \x03(\v2\x16.v1.status.StatusProbeR\x06probes\x12\x16\n" +
-	"\x06status\x18\x04 \x01(\tR\x06status\"\x97\x01\n" +
+	"\x06status\x18\x04 \x01(\tR\x06status\"\x1b\n" +
+	"\tBeatReply\x12\x0e\n" +
+	"\x02OK\x18\x01 \x01(\bR\x02OK\"\x97\x01\n" +
 	"\vStatusProbe\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n" +
 	"\ahealthy\x18\x02 \x01(\bR\ahealthy\x12\x18\n" +
@@ -414,64 +460,69 @@ const file_v1_status_model_proto_rawDesc = "" +
 	"\fservice_name\x18\a \x01(\tR\vserviceName\"\x8c\x01\n" +
 	"\x10StatusProbeStore\x128\n" +
 	"\tnextCheck\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\tnextCheck\x12>\n" +
-	"\x0epreviousResult\x18\x02 \x01(\v2\x16.v1.status.StatusProbeR\x0epreviousResultB'Z%eduseal/internal/gen/status/v1_statusb\x06proto3"
+	"\x0epreviousResult\x18\x02 \x01(\v2\x16.v1.status.StatusProbeR\x0epreviousResult2E\n" +
+	"\tHeartbeat\x128\n" +
+	"\x04Beat\x12\x18.v1.status.StatusRequest\x1a\x14.v1.status.BeatReply\"\x00B'Z%eduseal/internal/gen/status/v1_statusb\x06proto3"
 
 var (
-	file_v1_status_model_proto_rawDescOnce sync.Once
-	file_v1_status_model_proto_rawDescData []byte
+	file_v1_status_proto_rawDescOnce sync.Once
+	file_v1_status_proto_rawDescData []byte
 )
 
-func file_v1_status_model_proto_rawDescGZIP() []byte {
-	file_v1_status_model_proto_rawDescOnce.Do(func() {
-		file_v1_status_model_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_v1_status_model_proto_rawDesc), len(file_v1_status_model_proto_rawDesc)))
+func file_v1_status_proto_rawDescGZIP() []byte {
+	file_v1_status_proto_rawDescOnce.Do(func() {
+		file_v1_status_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_v1_status_proto_rawDesc), len(file_v1_status_proto_rawDesc)))
 	})
-	return file_v1_status_model_proto_rawDescData
+	return file_v1_status_proto_rawDescData
 }
 
-var file_v1_status_model_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
-var file_v1_status_model_proto_goTypes = []any{
+var file_v1_status_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_v1_status_proto_goTypes = []any{
 	(*StatusRequest)(nil),         // 0: v1.status.StatusRequest
 	(*StatusReply)(nil),           // 1: v1.status.StatusReply
-	(*StatusProbe)(nil),           // 2: v1.status.StatusProbe
-	(*BuildVariables)(nil),        // 3: v1.status.BuildVariables
-	(*StatusProbeStore)(nil),      // 4: v1.status.StatusProbeStore
-	(*StatusReply_Data)(nil),      // 5: v1.status.StatusReply.Data
-	(*timestamppb.Timestamp)(nil), // 6: google.protobuf.Timestamp
+	(*BeatReply)(nil),             // 2: v1.status.BeatReply
+	(*StatusProbe)(nil),           // 3: v1.status.StatusProbe
+	(*BuildVariables)(nil),        // 4: v1.status.BuildVariables
+	(*StatusProbeStore)(nil),      // 5: v1.status.StatusProbeStore
+	(*StatusReply_Data)(nil),      // 6: v1.status.StatusReply.Data
+	(*timestamppb.Timestamp)(nil), // 7: google.protobuf.Timestamp
 }
-var file_v1_status_model_proto_depIdxs = []int32{
-	5, // 0: v1.status.StatusReply.data:type_name -> v1.status.StatusReply.Data
-	6, // 1: v1.status.StatusProbe.lastCheckedTS:type_name -> google.protobuf.Timestamp
-	6, // 2: v1.status.StatusProbeStore.nextCheck:type_name -> google.protobuf.Timestamp
-	2, // 3: v1.status.StatusProbeStore.previousResult:type_name -> v1.status.StatusProbe
-	3, // 4: v1.status.StatusReply.Data.build_variables:type_name -> v1.status.BuildVariables
-	2, // 5: v1.status.StatusReply.Data.probes:type_name -> v1.status.StatusProbe
-	6, // [6:6] is the sub-list for method output_type
-	6, // [6:6] is the sub-list for method input_type
+var file_v1_status_proto_depIdxs = []int32{
+	6, // 0: v1.status.StatusReply.data:type_name -> v1.status.StatusReply.Data
+	7, // 1: v1.status.StatusProbe.lastCheckedTS:type_name -> google.protobuf.Timestamp
+	7, // 2: v1.status.StatusProbeStore.nextCheck:type_name -> google.protobuf.Timestamp
+	3, // 3: v1.status.StatusProbeStore.previousResult:type_name -> v1.status.StatusProbe
+	4, // 4: v1.status.StatusReply.Data.build_variables:type_name -> v1.status.BuildVariables
+	3, // 5: v1.status.StatusReply.Data.probes:type_name -> v1.status.StatusProbe
+	0, // 6: v1.status.Heartbeat.Beat:input_type -> v1.status.StatusRequest
+	2, // 7: v1.status.Heartbeat.Beat:output_type -> v1.status.BeatReply
+	7, // [7:8] is the sub-list for method output_type
+	6, // [6:7] is the sub-list for method input_type
 	6, // [6:6] is the sub-list for extension type_name
 	6, // [6:6] is the sub-list for extension extendee
 	0, // [0:6] is the sub-list for field type_name
 }
 
-func init() { file_v1_status_model_proto_init() }
-func file_v1_status_model_proto_init() {
-	if File_v1_status_model_proto != nil {
+func init() { file_v1_status_proto_init() }
+func file_v1_status_proto_init() {
+	if File_v1_status_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_v1_status_model_proto_rawDesc), len(file_v1_status_model_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_v1_status_proto_rawDesc), len(file_v1_status_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   7,
 			NumExtensions: 0,
-			NumServices:   0,
+			NumServices:   1,
 		},
-		GoTypes:           file_v1_status_model_proto_goTypes,
-		DependencyIndexes: file_v1_status_model_proto_depIdxs,
-		MessageInfos:      file_v1_status_model_proto_msgTypes,
+		GoTypes:           file_v1_status_proto_goTypes,
+		DependencyIndexes: file_v1_status_proto_depIdxs,
+		MessageInfos:      file_v1_status_proto_msgTypes,
 	}.Build()
-	File_v1_status_model_proto = out.File
-	file_v1_status_model_proto_goTypes = nil
-	file_v1_status_model_proto_depIdxs = nil
+	File_v1_status_proto = out.File
+	file_v1_status_proto_goTypes = nil
+	file_v1_status_proto_depIdxs = nil
 }
