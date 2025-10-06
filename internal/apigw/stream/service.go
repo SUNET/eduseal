@@ -129,6 +129,14 @@ func (s *Service) Status(ctx context.Context) *v1_status.StatusProbe {
 
 // Close closes the stream service
 func (s *Service) Close(ctx context.Context) error {
+	if err := s.Cache.close(ctx); err != nil {
+		return err
+	}
+
+	if err := s.Seal.close(ctx); err != nil {
+		return err
+	}
+
 	s.natsClient.Close()
 	s.log.Info("Closed")
 	ctx.Done()

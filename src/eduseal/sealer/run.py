@@ -69,7 +69,18 @@ class Sealer(Common, pb2_grpc.SealerServicer):
         self.logger.debug(f"transaction_id: {in_data.transaction_id}")
 
         try:
-            pdf_writer = IncrementalPdfFileWriter(input_stream=BytesIO(base64.urlsafe_b64decode(in_data.data)), strict=False)
+            decoded_pdf = base64.urlsafe_b64decode(in_data.data)
+        except Exception as _e:
+            self.logger.debug(f"input pdf is not base64 encoded, err: {_e}")
+            return SealReply(
+                transaction_id=in_data.transaction_id,
+                data="",
+                error=f"input pdf is not base64 encoded, err: {_e}",
+                sealer_backend=self.service_name,
+            )
+
+        try:
+            pdf_writer = IncrementalPdfFileWriter(input_stream=BytesIO(decoded_pdf), strict=False)
         except PdfReadError as _e:
             self.logger.debug(f"input pdf is not valid, err: {_e}")
             return SealReply(
@@ -137,7 +148,17 @@ class Sealer(Common, pb2_grpc.SealerServicer):
                 sealer_backend=self.service_name,
             )
 
-        base64_encoded = base64.b64encode(signed_pdf.getvalue()).decode("utf-8")
+        try:
+            base64_encoded = base64.b64encode(signed_pdf.getvalue()).decode("utf-8")
+        except Exception as _e:
+            err_msg = f"output pdf base64 encoding failed, err: {_e}"
+            self.logger.error("error: " + err_msg)
+            return SealReply(
+                transaction_id=in_data.transaction_id,
+                data="",
+                error=err_msg,
+                sealer_backend=self.service_name,
+            )
 
         signed_pdf.close()
 
@@ -202,7 +223,7 @@ class QueueServer(Common):
         )
         self.logger.info(f"Connected to NATS at {nc.connected_url.netloc}...")
 
-        async def help_request(msg):
+        async def sealer_msg_handler(msg):
             self.logger.info(f"Received a message on subject: {msg.subject} header: {msg.headers}")
 
             await msg.in_progress()
@@ -222,17 +243,19 @@ class QueueServer(Common):
             await msg.ack()
 
 
-        sub = await js.pull_subscribe(subject="SEAL", durable="sealer")
+        sub_sealer = await js.pull_subscribe(subject="SEAL", durable="sealer")
 
         while True:
-            msgs = await sub.fetch(1, timeout=31560000)
+            msgs = await sub_sealer.fetch(1, timeout=31560000)
             self.logger.info(f"msg: {msgs[0].headers}")
-            await help_request(msgs[0])
+            await sealer_msg_handler(msgs[0])
+
 
 if __name__ == "__main__":
     server = QueueServer()
     loop = asyncio.get_event_loop()
     try:
+        open('/tmp/healthcheck','w')
         loop.run_until_complete(server.start())
         loop.run_forever()
         loop.close()

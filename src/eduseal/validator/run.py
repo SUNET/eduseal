@@ -10,7 +10,6 @@ import grpc
 
 from pyhanko.sign.validation import validate_pdf_signature
 from pyhanko_certvalidator import ValidationContext
-from pyhanko_certvalidator.registry import TrustRootList
 from pyhanko.keys import load_cert_from_pemder
 from pyhanko.pdf_utils.reader import PdfFileReader
 
@@ -40,13 +39,23 @@ class Validator(Common, pb2_grpc.ValidatorServicer):
     def __init__(self):
         Common.__init__(self)
 
+        ca_cert = load_cert_from_pemder("/validation_roots/HARICA.crt")
+        vr_cert = load_cert_from_pemder("/validation_roots/vr.crt")
         self.validation_context = ValidationContext(
-            trust_roots=self.build_trust_roots(),
+            trust_roots=[ca_cert, vr_cert],
         )
 
     def Validate(self, in_data: ValidateRequest, context) -> ValidateReply:
         try:
-            pdf = PdfFileReader(BytesIO(base64.b64decode(in_data.data.encode("utf-8"), validate=False)), strict=False)
+            pdf_data = base64.b64decode(in_data.data.encode("utf-8"), validate=False)
+        except Exception as e:
+            self.logger.error(f"Error decoding base64: {e}")
+            return ValidateReply(
+                validation_backend=self.service_name,
+                error=f"Error decoding base64: {e}",
+            )
+        try:
+            pdf = PdfFileReader(BytesIO(pdf_data), strict=False)
         except Exception as e:
             self.logger.error(f"Error reading PDF: {e}")
             return ValidateReply(
@@ -100,17 +109,6 @@ class Validator(Common, pb2_grpc.ValidatorServicer):
                 self.logger.info(msg=f"found transaction_id: {entry[1]}")
                 return entry[1]
         return None
-
-    def build_trust_roots(self) -> TrustRootList:
-        trust_root_list: TrustRootList = None
-        for file in os.listdir(self.config.validation_certificates_path):
-            filename = os.fsdecode(file)
-            if filename.endswith(".crt"):
-                self.logger.info(f"found trust root file: {filename}")
-                abs_path = self.config.validation_certificates_path + "/" + filename
-                self.logger.info(f"trust root absolute path: {abs_path}")
-                itertools.chain(load_cert_from_pemder(abs_path), trust_root_list)
-        return trust_root_list
 
 class GRPCServer(Common):
     def __init__(self) -> None:

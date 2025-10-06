@@ -7,10 +7,6 @@ common:
   tracing:
     addr: jaeger:4318
     type: jaeger
-  sealer_nodes:
-    - sealer_1:50051
-    - sealer_2:50051
-  sealer_service_name: sealer.eduseal.docker
   validator_nodes:
     - validator_1:50051
     - validator_2:50051

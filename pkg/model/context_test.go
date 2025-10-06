@@ -10,7 +10,7 @@ import (
 
 func TestCopyTraceID(t *testing.T) {
 	ginContext := &gin.Context{
-		Keys: map[string]interface{}{
+		Keys: map[any]any{
 			"req_id": "test-uuid",
 		},
 	}

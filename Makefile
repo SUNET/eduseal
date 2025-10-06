@@ -61,6 +61,10 @@ ifndef VERSION
 VERSION := latest
 endif
 
+build-noctool:
+	$(info Building noctool)
+	go build $(LDFLAGS) -o bin/noctool ./cmd/noctool
+
 
 DOCKER_TAG_APIGW 				:= docker.sunet.se/eduseal/apigw:$(VERSION)
 DOCKER_TAG_GOBUILD 				:= docker.sunet.se/eduseal/gobuild:$(VERSION)
@@ -169,7 +173,7 @@ ci_build: docker-build docker-push
 proto-golang: proto-status-golang proto-sealer-golang proto-validator-golang
 
 proto-status-golang:
-	protoc --proto_path=./proto/ --go-grpc_opt=module=eduseal --go_opt=module=eduseal --go_out=. --go-grpc_out=. ./proto/v1-status-model.proto 
+	protoc --proto_path=./proto/ --go-grpc_opt=module=eduseal --go_opt=module=eduseal --go_out=. --go-grpc_out=. ./proto/v1-status.proto
 
 proto-sealer-golang:
 	protoc --proto_path=./proto/ --go-grpc_opt=module=eduseal --go_opt=module=eduseal --go_out=. --go-grpc_out=. ./proto/v1-sealer.proto 
@@ -185,8 +189,10 @@ proto-sealer-python:
 proto-validator-python:
 	python -m grpc_tools.protoc --proto_path=./proto/ --python_out=./src/eduseal/validator --grpc_python_out=./src/eduseal/validator ./proto/v1-validator.proto
 
-proto: proto-golang proto-python
+proto-health-python:
+	python -m grpc_tools.protoc --proto_path=./proto/ --python_out=./src/eduseal/sealer --grpc_python_out=./src/eduseal/sealer ./proto/v1-status.proto
 
+proto: proto-golang proto-python
 
 swagger: swagger-apigw swagger-fmt
 
@@ -223,7 +229,7 @@ vscode:
 		protobuf-compiler \
 		netcat-openbsd \
 		python3-pip \
-		python3.11-venv \
+		python3.13-venv \
 		plantuml
 	$(info Install go packages)
 	go install github.com/swaggo/swag/cmd/swag@latest && \
@@ -236,5 +242,5 @@ vscode:
 	go install github.com/nats-io/nats-top@latest
 
 	$(info Create python environment)
-	python3.11 -m venv .venv
-	. .venv/bin/activate && pip install -r requirements.txt && pip3 install pip-tools
+	python3 -m venv .venv
+	. .venv/bin/activate && pip install -r requirements.txt && pip

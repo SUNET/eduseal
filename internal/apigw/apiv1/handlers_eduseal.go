@@ -26,10 +26,10 @@ type PDFSignReply struct {
 
 // PDFSign is the request to sign pdf
 //
-//	@Summary		Sign pdf
-//	@ID				pdf-sign
-//	@Description	sign base64 encoded PDF
-//	@Tags			eduseal
+//	@Summary		Seal pdf
+//	@ID				pdf-seal
+//	@Description	seal base64 encoded PDF
+//	@Tags			EduSeal
 //	@Accept			json
 //	@Produce		json
 //	@Success		200	{object}	PDFSignReply			"Success"
@@ -94,12 +94,12 @@ type PDFGetSignedReply struct {
 	Data *model.Document `json:"data"`
 }
 
-// PDFGetSigned is the request to get signed pdfs
+// PDFGetSigned is the request to get sealed pdf
 //
-//	@Summary		fetch singed pdf
+//	@Summary		fetch sealed pdf
 //	@ID				pdf-fetch
-//	@Description	fetch a singed pdf
-//	@Tags			eduseal
+//	@Description	fetch a sealed pdf
+//	@Tags			EduSeal
 //	@Accept			json
 //	@Produce		json
 //	@Success		200				{object}	PDFGetSignedReply		"Success"
@@ -151,8 +151,8 @@ type PDFValidateReply struct {
 //
 //	@Summary		Validate pdf
 //	@ID				pdf-validate
-//	@Description	validate a signed base64 encoded PDF
-//	@Tags			eduseal
+//	@Description	validate a sealed base64 encoded PDF
+//	@Tags			EduSeal
 //	@Accept			json
 //	@Produce		json
 //	@Success		200	{object}	PDFValidateReply		"Success"

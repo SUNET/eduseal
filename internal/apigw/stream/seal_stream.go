@@ -119,3 +119,9 @@ func (s *sealStream) createStream(ctx context.Context) error {
 
 	return nil
 }
+
+func (s *sealStream) close(ctx context.Context) error {
+	s.log.Debug("Closing")
+
+	return nil
+}

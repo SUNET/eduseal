@@ -11,7 +11,7 @@ import (
 	"eduseal/pkg/trace"
 )
 
-//	@title		Datastore API
+//	@title		EduSeal API
 //	@version	0.1.0
 //	@BasePath	/api/v1
 
