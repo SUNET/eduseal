@@ -16,5 +16,4 @@ type Apiv1 interface {
 
 	// misc endpoints
 	Health(ctx context.Context) (*v1_status.StatusReply, error)
-	Metrics(ctx context.Context) (*apiv1.MetricReply, error)
 }

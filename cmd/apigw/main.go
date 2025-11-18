@@ -3,13 +3,13 @@ package main
 import (
 	"context"
 	"eduseal/internal/apigw/apiv1"
-	"eduseal/internal/apigw/db"
 	"eduseal/internal/apigw/httpserver"
 	"eduseal/internal/apigw/stream"
 	"eduseal/pkg/configuration"
 	"eduseal/pkg/grpcclient"
 	"eduseal/pkg/kvclient"
 	"eduseal/pkg/logger"
+	"eduseal/pkg/metric"
 	"eduseal/pkg/trace"
 	"os"
 	"os/signal"
@@ -42,6 +42,11 @@ func main() {
 		panic(err)
 	}
 
+	metric, err := metric.New(ctx, cfg, "eduseal_apigw", log.New("metric"))
+	if err != nil {
+		panic(err)
+	}
+
 	grpcClient, err := grpcclient.New(ctx, cfg, tracer, log.New("grpcclient"))
 	if err != nil {
 		panic(err)
@@ -59,13 +64,7 @@ func main() {
 		panic(err)
 	}
 
-	dbService, err := db.New(ctx, cfg, tracer, log.New("db"))
-	services["dbService"] = dbService
-	if err != nil {
-		panic(err)
-	}
-
-	apiv1Client, err := apiv1.New(ctx, kvClient, grpcClient, dbService, streamService, tracer, cfg, log.New("apiv1"))
+	apiv1Client, err := apiv1.New(ctx, kvClient, grpcClient, streamService, tracer, metric, cfg, log.New("apiv1"))
 	if err != nil {
 		panic(err)
 	}

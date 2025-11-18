@@ -50,7 +50,7 @@ func (s *Service) middlewareCrash(ctx context.Context) gin.HandlerFunc {
 
 // middlewareJWTAuth middleware to require authentication
 func (s *Service) middlewareJWTAuth(ctx context.Context) gin.HandlerFunc {
-	ctx, span := s.tp.Start(ctx, "httpserver:middlewareJWTAuth")
+	ctx, span := s.tracer.Start(ctx, "httpserver:middlewareJWTAuth")
 	defer span.End()
 
 	log := s.logger.New("middlewareJWTAuth")

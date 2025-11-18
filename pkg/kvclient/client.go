@@ -25,13 +25,8 @@ type Client struct {
 	tp         *trace.Tracer
 	statusTick *time.Ticker
 
-	Doc               *Doc
-	MetricSigning     *MetricSigning
-	MetricFetching    *MetricFetching
-	MetricValidations *MetricValidations
+	Doc *Doc
 }
-
-//type statusResults map[string]statusResult
 
 type statusResult struct {
 	healthy bool
@@ -71,9 +66,6 @@ func New(ctx context.Context, cfg *model.Cfg, tracer *trace.Tracer, log *logger.
 	c.probe(ctx)
 
 	c.Doc = &Doc{client: c, key: "doc:%s:%s"}
-	c.MetricSigning = &MetricSigning{client: c, key: "metric:signings"}
-	c.MetricFetching = &MetricFetching{client: c, key: "metric:fetching"}
-	c.MetricValidations = &MetricValidations{client: c, key: "metric:validations"}
 
 	go func() {
 		for {

@@ -22,7 +22,7 @@ type Metric struct {
 	metric.Meter
 }
 
-func (m *Metric) newExporter(ctx context.Context, cfg *model.Cfg) error {
+func (c *Metric) newExporter(ctx context.Context, cfg *model.Cfg) error {
 	exp, err := otlpmetricgrpc.New(ctx,
 		otlpmetricgrpc.WithInsecure(),
 		otlpmetricgrpc.WithEndpoint(cfg.Common.Metric.Addr),
@@ -31,28 +31,31 @@ func (m *Metric) newExporter(ctx context.Context, cfg *model.Cfg) error {
 	if err != nil {
 		return err
 	}
-	m.exporter = exp
+	c.exporter = exp
 
 	return nil
 }
 
-func (m *Metric) newProvider(serviceName string) {
-	if m.exporter == nil {
+func (c *Metric) newProvider(serviceName string) {
+	if c.exporter == nil {
 		panic("exporter is nil")
 	}
 
-	m.Provider = sdkmetric.NewMeterProvider(
-		sdkmetric.WithReader(sdkmetric.NewPeriodicReader(m.exporter)))
+	c.Provider = sdkmetric.NewMeterProvider(
+		sdkmetric.WithReader(
+			sdkmetric.NewPeriodicReader(c.exporter),
+		),
+	)
 	sdkmetric.WithResource(resource.NewWithAttributes(
 		semconv.SchemaURL,
 		semconv.ServiceName(serviceName),
 	))
 
-	otel.SetMeterProvider(m.Provider)
+	otel.SetMeterProvider(c.Provider)
 }
 
 // New return a new metric
-func New(ctx context.Context, cfg *model.Cfg, log *logger.Log, serviceName string) (*Metric, error) {
+func New(ctx context.Context, cfg *model.Cfg, serviceName string, log *logger.Log) (*Metric, error) {
 	m := &Metric{
 		log: log,
 	}
@@ -73,13 +76,13 @@ func New(ctx context.Context, cfg *model.Cfg, log *logger.Log, serviceName strin
 	return m, nil
 }
 
-func NewSimple(ctx context.Context, serviceName string) (*Metric, error) {
-	m := &Metric{}
+func NewForTesting(ctx context.Context, serviceName string) (*Metric, error) {
+	c := &Metric{}
 
 	// Provider
-	m.Provider = sdkmetric.NewMeterProvider()
+	c.Provider = sdkmetric.NewMeterProvider()
 
-	m.Meter = otel.Meter(serviceName)
+	c.Meter = otel.Meter(serviceName)
 
-	return m, nil
+	return c, nil
 }

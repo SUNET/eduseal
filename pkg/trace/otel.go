@@ -2,12 +2,13 @@ package trace
 
 import (
 	"context"
-	"time"
 	"eduseal/pkg/logger"
 	"eduseal/pkg/model"
+	"time"
 
 	jaegerPropagator "go.opentelemetry.io/contrib/propagators/jaeger"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -30,7 +31,7 @@ type Tracer struct {
 
 // New return a new tracer
 func New(ctx context.Context, cfg *model.Cfg, serviceName string, log *logger.Log) (*Tracer, error) {
-	exp, err := newExporter(ctx, cfg)
+	exp, err := newExporterGRPC(ctx, cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -85,6 +86,14 @@ func newExporter(ctx context.Context, cfg *model.Cfg) (sdktrace.SpanExporter, er
 		otlptracehttp.WithEndpoint(cfg.Common.Tracing.Addr),
 		otlptracehttp.WithInsecure(),
 		otlptracehttp.WithTimeout(time.Duration(cfg.Common.Tracing.Timeout)*time.Second),
+	)
+}
+
+func newExporterGRPC(ctx context.Context, cfg *model.Cfg) (sdktrace.SpanExporter, error) {
+	return otlptracegrpc.New(ctx,
+		otlptracegrpc.WithEndpoint(cfg.Common.Tracing.Addr),
+		otlptracegrpc.WithInsecure(),
+		otlptracegrpc.WithTimeout(time.Duration(cfg.Common.Tracing.Timeout)*time.Second),
 	)
 }
 

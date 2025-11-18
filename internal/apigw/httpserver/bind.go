@@ -10,14 +10,14 @@ import (
 )
 
 func (s *Service) bindV2(ctx context.Context, c *gin.Context, v any) error {
-	_, span := s.tp.Start(ctx, "httpserver:bindV2")
+	_, span := s.tracer.Start(ctx, "httpserver:bindV2")
 	defer span.End()
 
 	return sonic.ConfigDefault.NewDecoder(c.Request.Body).Decode(v)
 }
 
 func (s *Service) bindRequest(ctx context.Context, c *gin.Context, v any) error {
-	ctx, span := s.tp.Start(ctx, "httpserver:bindRequest")
+	ctx, span := s.tracer.Start(ctx, "httpserver:bindRequest")
 	defer span.End()
 
 	if c.ContentType() == gin.MIMEJSON {
@@ -29,7 +29,7 @@ func (s *Service) bindRequest(ctx context.Context, c *gin.Context, v any) error 
 }
 
 func (s *Service) bindRequestQuery(ctx context.Context, c *gin.Context, v any) error {
-	_, span := s.tp.Start(ctx, "httpserver:bindRequestQuery")
+	_, span := s.tracer.Start(ctx, "httpserver:bindRequestQuery")
 	defer span.End()
 
 	refV := reflect.ValueOf(v).Elem()

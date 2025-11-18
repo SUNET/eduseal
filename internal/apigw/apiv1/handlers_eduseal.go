@@ -37,8 +37,15 @@ type PDFSignReply struct {
 //	@Param			req	body		PDFSignRequest			true	" "
 //	@Router			/pdf/sign [post]
 func (c *Client) PDFSign(ctx context.Context, req *PDFSignRequest) (*PDFSignReply, error) {
-	ctx, span := c.tp.Start(ctx, "apiv1:PDFSign")
+	ctx, span := c.tracer.Start(ctx, "apiv1:PDFSign")
 	defer span.End()
+
+	counter, err := c.metric.Int64Counter("pdf_seal_counter")
+	if err != nil {
+		span.SetStatus(codes.Error, err.Error())
+		c.log.Error(err, "failed to create pdf seal counter")
+		return nil, err
+	}
 
 	if req.PDF == "" {
 		span.SetStatus(codes.Error, helpers.ErrEmptyPDF.Error())
@@ -75,11 +82,7 @@ func (c *Client) PDFSign(ctx context.Context, req *PDFSignRequest) (*PDFSignRepl
 		return nil, err
 	}
 
-	if err := c.kv.MetricSigning.Inc(ctx); err != nil {
-		span.SetStatus(codes.Error, err.Error())
-		c.log.Error(err, "failed to increment metric")
-		return nil, err
-	}
+	counter.Add(ctx, 1)
 
 	return reply, nil
 }
@@ -107,8 +110,15 @@ type PDFGetSignedReply struct {
 //	@Param			transaction_id	path		string					true	"transaction_id"
 //	@Router			/pdf/{transaction_id} [get]
 func (c *Client) PDFGetSigned(ctx context.Context, req *PDFGetSignedRequest) (*PDFGetSignedReply, error) {
-	ctx, span := c.tp.Start(ctx, "apiv1:PDFGetSigned")
+	ctx, span := c.tracer.Start(ctx, "apiv1:PDFGetSigned")
 	defer span.End()
+
+	counter, err := c.metric.Int64Counter("pdf_get_sealed_counter")
+	if err != nil {
+		span.SetStatus(codes.Error, err.Error())
+		c.log.Error(err, "failed to create pdf get sealed counter")
+		return nil, err
+	}
 
 	if !c.cfg.Common.Mongo.Disable {
 		if c.db.EduSealSigningColl.IsRevoked(ctx, req.TransactionID) {
@@ -128,11 +138,7 @@ func (c *Client) PDFGetSigned(ctx context.Context, req *PDFGetSignedRequest) (*P
 		Data: signedDoc,
 	}
 
-	if err := c.kv.MetricFetching.Inc(ctx); err != nil {
-		span.SetStatus(codes.Error, err.Error())
-		c.log.Error(err, "failed to increment metric")
-		return nil, err
-	}
+	counter.Add(ctx, 1)
 
 	return resp, nil
 }
@@ -160,8 +166,15 @@ type PDFValidateReply struct {
 //	@Param			req	body		PDFValidateRequest		true	" "
 //	@Router			/pdf/validate [post]
 func (c *Client) PDFValidate(ctx context.Context, req *PDFValidateRequest) (*PDFValidateReply, error) {
-	ctx, span := c.tp.Start(ctx, "apiv1:PDFValidate")
+	ctx, span := c.tracer.Start(ctx, "apiv1:PDFValidate")
 	defer span.End()
+
+	counter, err := c.metric.Int64Counter("pdf_validation_counter")
+	if err != nil {
+		span.SetStatus(codes.Error, err.Error())
+		c.log.Error(err, "failed to create pdf validation counter")
+		return nil, err
+	}
 
 	validation, err := c.grpcClient.Validator.Validate(ctx, uuid.NewString(), req.PDF)
 	if err != nil {
@@ -174,11 +187,7 @@ func (c *Client) PDFValidate(ctx context.Context, req *PDFValidateRequest) (*PDF
 		Data: validation,
 	}
 
-	if err := c.kv.MetricValidations.Inc(ctx); err != nil {
-		span.SetStatus(codes.Error, err.Error())
-		c.log.Error(err, "failed to increment metric")
-		return nil, err
-	}
+	counter.Add(ctx, 1)
 
 	return reply, nil
 }
@@ -208,8 +217,15 @@ type PDFRevokeReply struct {
 //	@Param			transaction_id	path		string					true	"transaction_id"
 //	@Router			/pdf/revoke/{transaction_id} [put]
 func (c *Client) PDFRevoke(ctx context.Context, req *PDFRevokeRequest) (*PDFRevokeReply, error) {
-	ctx, span := c.tp.Start(ctx, "apiv1:PDFRevoke")
+	ctx, span := c.tracer.Start(ctx, "apiv1:PDFRevoke")
 	defer span.End()
+
+	counter, err := c.metric.Int64Counter("pdf_revoke_counter")
+	if err != nil {
+		span.SetStatus(codes.Error, err.Error())
+		c.log.Error(err, "failed to create pdf revoke counter")
+		return nil, err
+	}
 
 	if c.cfg.Common.Mongo.Disable {
 		reply := &PDFRevokeReply{
@@ -233,6 +249,8 @@ func (c *Client) PDFRevoke(ctx context.Context, req *PDFRevokeRequest) (*PDFRevo
 			Status: true,
 		},
 	}
+
+	counter.Add(ctx, 1)
 
 	return reply, nil
 }

@@ -10,7 +10,7 @@ import (
 )
 
 func (s *Service) endpointHealth(ctx context.Context, c *gin.Context) (any, error) {
-	ctx, span := s.tp.Start(ctx, "httpserver:endpointHealth")
+	ctx, span := s.tracer.Start(ctx, "httpserver:endpointHealth")
 	defer span.End()
 
 	reply, err := s.apiv1.Health(ctx)
@@ -20,20 +20,9 @@ func (s *Service) endpointHealth(ctx context.Context, c *gin.Context) (any, erro
 	return reply, nil
 }
 
-func (s *Service) endpointMetrics(ctx context.Context, c *gin.Context) (any, error) {
-	ctx, span := s.tp.Start(ctx, "httpserver:endpointMetrics")
-	defer span.End()
-
-	reply, err := s.apiv1.Metrics(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return reply, nil
-}
-
 // endpointSignPDF signs a PDF EduSeal
 func (s *Service) endpointSignPDF(ctx context.Context, c *gin.Context) (interface{}, error) {
-	ctx, span := s.tp.Start(ctx, "httpserver:endpointSignPDF")
+	ctx, span := s.tracer.Start(ctx, "httpserver:endpointSignPDF")
 	defer span.End()
 
 	request := &apiv1.PDFSignRequest{}
@@ -51,7 +40,7 @@ func (s *Service) endpointSignPDF(ctx context.Context, c *gin.Context) (interfac
 
 // endpointValidatePDF validates a signed PDF EduSeal
 func (s *Service) endpointValidatePDF(ctx context.Context, c *gin.Context) (interface{}, error) {
-	ctx, span := s.tp.Start(ctx, "httpserver:endpointValidatePDF")
+	ctx, span := s.tracer.Start(ctx, "httpserver:endpointValidatePDF")
 	defer span.End()
 
 	request := &apiv1.PDFValidateRequest{}
@@ -69,7 +58,7 @@ func (s *Service) endpointValidatePDF(ctx context.Context, c *gin.Context) (inte
 
 // endpointGetSignedPDF returns a signed PDF EduSeal
 func (s *Service) endpointGetSignedPDF(ctx context.Context, c *gin.Context) (interface{}, error) {
-	ctx, span := s.tp.Start(ctx, "httpserver:endpointGetSignedPDF")
+	ctx, span := s.tracer.Start(ctx, "httpserver:endpointGetSignedPDF")
 	defer span.End()
 
 	request := &apiv1.PDFGetSignedRequest{}
@@ -87,7 +76,7 @@ func (s *Service) endpointGetSignedPDF(ctx context.Context, c *gin.Context) (int
 
 // endpointPDFRevoke revokes a signed PDF EduSeal
 func (s *Service) endpointPDFRevoke(ctx context.Context, c *gin.Context) (any, error) {
-	ctx, span := s.tp.Start(ctx, "httpserver:endpointPDFRevoke")
+	ctx, span := s.tracer.Start(ctx, "httpserver:endpointPDFRevoke")
 	defer span.End()
 
 	request := &apiv1.PDFRevokeRequest{}

@@ -25,16 +25,16 @@ type Service struct {
 	server *http.Server
 	apiv1  Apiv1
 	gin    *gin.Engine
-	tp     *trace.Tracer
+	tracer *trace.Tracer
 }
 
 // New creates a new httpserver service
-func New(ctx context.Context, config *model.Cfg, api *apiv1.Client, tp *trace.Tracer, log *logger.Log) (*Service, error) {
+func New(ctx context.Context, config *model.Cfg, api *apiv1.Client, tracer *trace.Tracer, log *logger.Log) (*Service, error) {
 	s := &Service{
 		config: config,
 		logger: log,
 		apiv1:  api,
-		tp:     tp,
+		tracer: tracer,
 		server: &http.Server{
 			ReadHeaderTimeout: 2 * time.Second,
 		},
@@ -46,14 +46,6 @@ func New(ctx context.Context, config *model.Cfg, api *apiv1.Client, tp *trace.Tr
 	case false:
 		gin.SetMode(gin.DebugMode)
 	}
-
-	//apiValidator, err := helpers.NewValidator()
-	//if err != nil {
-	//	return nil, err
-	//}
-	//binding.Validator = &defaultValidator{
-	//	Validate: apiValidator,
-	//}
 
 	s.gin = gin.New()
 	s.server.Handler = s.gin
@@ -71,7 +63,6 @@ func New(ctx context.Context, config *model.Cfg, api *apiv1.Client, tp *trace.Tr
 
 	rgRoot := s.gin.Group("/")
 	s.regEndpoint(ctx, rgRoot, http.MethodGet, "health", s.endpointHealth)
-	s.regEndpoint(ctx, rgRoot, http.MethodGet, "metrics", s.endpointMetrics)
 
 	rgDocs := rgRoot.Group("/swagger")
 	rgDocs.GET("/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
