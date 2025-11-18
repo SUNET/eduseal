@@ -120,13 +120,6 @@ func (c *Client) PDFGetSigned(ctx context.Context, req *PDFGetSignedRequest) (*P
 		return nil, err
 	}
 
-	if !c.cfg.Common.Mongo.Disable {
-		if c.db.EduSealSigningColl.IsRevoked(ctx, req.TransactionID) {
-			span.SetStatus(codes.Error, helpers.ErrDocumentIsRevoked.Error())
-			return nil, helpers.ErrDocumentIsRevoked
-		}
-	}
-
 	signedDoc, err := c.kv.Doc.GetSigned(ctx, req.TransactionID)
 	if err != nil {
 		span.SetStatus(codes.Error, err.Error())
@@ -202,55 +195,4 @@ type PDFRevokeReply struct {
 	Data struct {
 		Status bool `json:"status"`
 	} `json:"data"`
-}
-
-// PDFRevoke is the request to revoke pdf
-//
-//	@Summary		revoke signed pdf
-//	@ID				pdf-revoke
-//	@Description	revoke a singed pdf
-//	@Tags			eduseal
-//	@Accept			json
-//	@Produce		json
-//	@Success		200				{object}	PDFRevokeReply			"Success"
-//	@Failure		400				{object}	helpers.ErrorResponse	"Bad Request"
-//	@Param			transaction_id	path		string					true	"transaction_id"
-//	@Router			/pdf/revoke/{transaction_id} [put]
-func (c *Client) PDFRevoke(ctx context.Context, req *PDFRevokeRequest) (*PDFRevokeReply, error) {
-	ctx, span := c.tracer.Start(ctx, "apiv1:PDFRevoke")
-	defer span.End()
-
-	counter, err := c.metric.Int64Counter("pdf_revoke_counter")
-	if err != nil {
-		span.SetStatus(codes.Error, err.Error())
-		c.log.Error(err, "failed to create pdf revoke counter")
-		return nil, err
-	}
-
-	if c.cfg.Common.Mongo.Disable {
-		reply := &PDFRevokeReply{
-			Data: struct {
-				Status bool `json:"status"`
-			}{
-				Status: false,
-			},
-		}
-		return reply, nil
-	}
-
-	if err := c.db.EduSealSigningColl.Revoke(ctx, req.TransactionID); err != nil {
-		return nil, err
-	}
-
-	reply := &PDFRevokeReply{
-		Data: struct {
-			Status bool `json:"status"`
-		}{
-			Status: true,
-		},
-	}
-
-	counter.Add(ctx, 1)
-
-	return reply, nil
 }

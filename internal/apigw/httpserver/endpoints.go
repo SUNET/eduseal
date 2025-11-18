@@ -73,21 +73,3 @@ func (s *Service) endpointGetSignedPDF(ctx context.Context, c *gin.Context) (int
 	}
 	return reply, nil
 }
-
-// endpointPDFRevoke revokes a signed PDF EduSeal
-func (s *Service) endpointPDFRevoke(ctx context.Context, c *gin.Context) (any, error) {
-	ctx, span := s.tracer.Start(ctx, "httpserver:endpointPDFRevoke")
-	defer span.End()
-
-	request := &apiv1.PDFRevokeRequest{}
-	if err := s.bindRequest(ctx, c, request); err != nil {
-		span.SetStatus(codes.Error, err.Error())
-		return nil, err
-	}
-	reply, err := s.apiv1.PDFRevoke(ctx, request)
-	if err != nil {
-		span.SetStatus(codes.Error, err.Error())
-		return nil, err
-	}
-	return reply, nil
-}

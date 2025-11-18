@@ -2,7 +2,6 @@ package apiv1
 
 import (
 	"context"
-	"eduseal/internal/apigw/db"
 	"eduseal/internal/apigw/stream"
 	"eduseal/pkg/grpcclient"
 	"eduseal/pkg/kvclient"
@@ -19,7 +18,6 @@ import (
 // Client holds the public api object
 type Client struct {
 	cfg        *model.Cfg
-	db         *db.Service
 	stream     *stream.Service
 	log        *logger.Log
 	tracer     *trace.Tracer
@@ -29,10 +27,9 @@ type Client struct {
 }
 
 // New creates a new instance of the public api
-func New(ctx context.Context, kv *kvclient.Client, grpcClient *grpcclient.Client, db *db.Service, streamService *stream.Service, tracer *trace.Tracer, metric *metric.Metric, cfg *model.Cfg, logger *logger.Log) (*Client, error) {
+func New(ctx context.Context, kv *kvclient.Client, grpcClient *grpcclient.Client, streamService *stream.Service, tracer *trace.Tracer, metric *metric.Metric, cfg *model.Cfg, logger *logger.Log) (*Client, error) {
 	c := &Client{
 		cfg:        cfg,
-		db:         db,
 		stream:     streamService,
 		log:        logger,
 		tracer:     tracer,

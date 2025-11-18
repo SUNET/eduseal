@@ -19,10 +19,6 @@ func (c *Client) Health(ctx context.Context) (*v1_status.StatusReply, error) {
 		kvStatus,
 	}
 
-	if !c.cfg.Common.Mongo.Disable {
-		probes = append(probes, c.db.Status(ctx))
-	}
-
 	status := probes.Check("apigw")
 
 	return status, nil

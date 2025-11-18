@@ -76,7 +76,6 @@ func New(ctx context.Context, config *model.Cfg, api *apiv1.Client, tracer *trac
 	s.regEndpoint(ctx, rgPDF, http.MethodPost, "/sign", s.endpointSignPDF)
 	s.regEndpoint(ctx, rgPDF, http.MethodGet, "/:transaction_id", s.endpointGetSignedPDF)
 	s.regEndpoint(ctx, rgPDF, http.MethodPost, "/validate", s.endpointValidatePDF)
-	s.regEndpoint(ctx, rgPDF, http.MethodPut, "/revoke/:transaction_id", s.endpointPDFRevoke)
 
 	// Run http server
 	go func() {
