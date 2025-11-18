@@ -13,7 +13,6 @@ services:
       - ./developer_tools/pki/apigw.key:/etc/ssl/private/apigw.key:ro
       - ./developer_tools/pki/apigw.pem:/etc/ssl/private/apigw.pem:ro
     depends_on:
-      #- mongo
       - validator_1
       - validator_2
       - nats1
@@ -226,17 +225,6 @@ services:
       - "--js"
       - "--sd=/data"
 
-  #  image: mongo:4.0.10
-  #  container_name: "eduseal_dev_mongo"
-  #  restart: always
-  #  expose:
-  #    - 27017
-  #  volumes:
-  #    - mongo_data:/data
-  #  networks:
-  #    eduseal-dev-net:
-  #      ipv4_address: 172.20.50.26
-
   jaeger:
     image: jaegertracing/all-in-one:latest
     container_name: eduseal_dev_jaeger
@@ -261,7 +249,6 @@ networks:
       config:
         - subnet: 172.20.50.0/24
 volumes:
-  mongo_data:
   redis-cluster_data-0:
     driver: local
   redis-cluster_data-1:
