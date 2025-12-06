@@ -4,8 +4,6 @@
 #
 #    pip-compile --allow-unsafe --generate-hashes --index-url=https://pypi.sunet.se/simple requirements.in
 #
---index-url https://pypi.sunet.se/simple
-
 annotated-types==0.7.0 \
     --hash=sha256:1f02e8b43a8fbbc3f3e0d4f0f4bfc8131bcb4eebe8849b8e5c773f3a1c582a53 \
     --hash=sha256:aff07c09a53a08bc8cfccb9c85b05f1aa9a2a6f23728d790723543408344ce89
@@ -1140,9 +1138,9 @@ uritools==5.0.0 \
     --hash=sha256:68180cad154062bd5b5d9ffcdd464f8de6934414b25462ae807b00b8df9345de \
     --hash=sha256:cead3a49ba8fbca3f91857343849d506d8639718f4a2e51b62e87393b493bd6f
     # via pyhanko-certvalidator
-urllib3==2.5.0 \
-    --hash=sha256:3fc47733c7e419d4bc3f6b3dc2b4f890bb743906a30d56ba4a5bfa4bbff92760 \
-    --hash=sha256:e6b01673c0fa6a13e374b50871808eb3bf7046c4b125b216f6bf1cc604cff0dc
+urllib3==2.6.0 \
+    --hash=sha256:c90f7a39f716c572c4e3e58509581ebd83f9b59cced005b7db7ad2d22b0db99f \
+    --hash=sha256:cb9bcef5a4b345d5da5d145dc3e30834f58e8018828cbc724d30b4cb7d4d49f1
     # via requests
 zipp==3.23.0 \
     --hash=sha256:071652d6115ed432f5ce1d34c336c0adfd6a884660d1e9712a256d3d3bd4b14e \
