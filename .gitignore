@@ -8,3 +8,5 @@ developer_tools/pki/*
 docker/sealer/softhsm/*.der
 docker/sealer/softhsm/*.crt
 config.yaml
+client.cert
+client.key

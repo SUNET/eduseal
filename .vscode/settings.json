@@ -9,6 +9,8 @@
         "etcdclient",
         "gobuild",
         "goretask",
+        "gosec",
+        "govulncheck",
         "grpcclient",
         "grpcio",
         "healthcheck",
@@ -25,6 +27,8 @@
         "opentelemetry",
         "otel",
         "pemder",
+        "PIPCOMPILE",
+        "PIPSYNC",
         "protobuf",
         "protoc",
         "pydantic",
@@ -33,12 +37,14 @@
         "Sectigo",
         "simplequeue",
         "softhsm",
+        "staticcheck",
         "Strs",
         "subfilter",
         "SUNET",
         "timestamppb",
         "unmarshal",
         "validatorclient",
-        "Vetenskapsrådet"
+        "Vetenskapsrådet",
+        "vulncheck"
     ]
 }
