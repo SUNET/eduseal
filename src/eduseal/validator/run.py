@@ -23,14 +23,19 @@ class Common():
         self.logger = logging.getLogger(self.service_name)
         self.logger.setLevel(logging.DEBUG)
         
+        # Console handler
         ch = logging.StreamHandler()
         ch.setLevel(logging.DEBUG)
-
         formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-
         ch.setFormatter(formatter)
-
         self.logger.addHandler(ch)
+        
+        # File handler
+        fh = logging.FileHandler("/var/log/sunet/validator.log")
+        fh.setLevel(logging.DEBUG)
+        fh.setFormatter(formatter)
+        self.logger.addHandler(fh)
+        
         self.logger.propagate = False
 
         self.config: CFG = parse(log=self.logger)

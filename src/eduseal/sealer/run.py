@@ -29,12 +29,18 @@ class Common():
         self.logger = logging.getLogger(self.service_name)
         self.logger.setLevel(logging.DEBUG)
         
+        # Console handler
         ch = logging.StreamHandler()
         ch.setLevel(logging.DEBUG)
-
         ch.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
-
         self.logger.addHandler(ch)
+        
+        # File handler
+        fh = logging.FileHandler("/var/log/sunet/sealer.log")
+        fh.setLevel(logging.DEBUG)
+        fh.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
+        self.logger.addHandler(fh)
+        
         self.logger.propagate = False
 
         self.logger.info(f"init sealer {self.service_name}")
