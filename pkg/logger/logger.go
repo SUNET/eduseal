@@ -40,6 +40,7 @@ func New(name, logPath string, production bool) (*Log, error) {
 		zc.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
 	}
 
+	zc.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
 	zc.DisableCaller = true
 	zc.DisableStacktrace = true
 

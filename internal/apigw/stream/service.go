@@ -89,7 +89,7 @@ func (s *Service) connect(ctx context.Context) error {
 	s.natsClient, err = nats.Connect(
 		servers,
 		nats.Timeout(2*time.Second),
-		nats.MaxReconnects(10),
+		nats.MaxReconnects(100),
 		nats.RetryOnFailedConnect(true),
 		nats.ReconnectWait(2*time.Second),
 		nats.Name("apigw"),

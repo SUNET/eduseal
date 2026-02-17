@@ -86,6 +86,8 @@ func (s *cacheStream) createStream(ctx context.Context) error {
 		Durable:       "cacher",
 		AckPolicy:     jetstream.AckExplicitPolicy,
 		FilterSubject: "CACHE",
+		MaxDeliver:    5,
+		BackOff:       []time.Duration{500 * time.Millisecond, 1 * time.Second, 2 * time.Second, 3 * time.Second},
 	})
 	if err != nil {
 		s.log.Error(err, "Failed to create cache_stream consumer")
@@ -110,7 +112,7 @@ func (s *cacheStream) Consume(ctx context.Context) error {
 			return
 		}
 
-		s.log.Debug("Received message", "subject", m.Subject(), "transaction_id", m.Headers().Get("Nats-Msg-Id"))
+		s.log.Info("Received message", "subject", m.Subject(), "transaction_id", m.Headers().Get("Nats-Msg-Id"))
 		document := &model.Document{}
 		if err := json.Unmarshal(m.Data(), document); err != nil {
 			s.log.Error(err, "Failed to unmarshal")

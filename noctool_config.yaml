@@ -12,3 +12,13 @@ testcase: ladok
 save: true
 client_cert: ./client.cert
 client_cert_key: ./client.key
+pdf_size: small  # Options: small, medium, big
+
+# Storm mode configuration for continuous testing
+storm:
+  enabled: false                # Set to true to enable storm mode
+  max_retries: 5                # Number of fetch attempts per upload
+  retry_wait_ms: 500           # Wait time between fetch retries in milliseconds
+  upload_interval_ms: 2000     # Wait time between uploads in milliseconds
+  max_uploads: 10              # Maximum number of uploads (0 = unlimited/continuous)
+  fetch_timeout_sec: 15        # Timeout for fetching sealed PDF in seconds

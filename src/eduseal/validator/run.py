@@ -3,6 +3,8 @@ from io import BytesIO
 import base64
 import time
 import os
+import signal
+import threading
 from typing import Optional
 import itertools
 from concurrent import futures
@@ -22,6 +24,9 @@ class Common():
         self.service_name = os.getenv("EDUSEAL_SERVICE_NAME", "eduseal_validator")
         self.logger = logging.getLogger(self.service_name)
         self.logger.setLevel(logging.DEBUG)
+        
+        # Clear any existing handlers to avoid duplicates
+        self.logger.handlers.clear()
         
         # Console handler
         ch = logging.StreamHandler()
@@ -44,13 +49,30 @@ class Validator(Common, pb2_grpc.ValidatorServicer):
     def __init__(self):
         Common.__init__(self)
 
+        self._active_validations = 0
+        self._active_lock = threading.Lock()
+
         ca_cert = load_cert_from_pemder("/validation_roots/HARICA.crt")
         vr_cert = load_cert_from_pemder("/validation_roots/vr.crt")
         self.validation_context = ValidationContext(
             trust_roots=[ca_cert, vr_cert],
         )
 
+    @property
+    def active_validations(self) -> int:
+        with self._active_lock:
+            return self._active_validations
+
     def Validate(self, in_data: ValidateRequest, context) -> ValidateReply:
+        with self._active_lock:
+            self._active_validations += 1
+        try:
+            return self._do_validate(in_data, context)
+        finally:
+            with self._active_lock:
+                self._active_validations -= 1
+
+    def _do_validate(self, in_data: ValidateRequest, context) -> ValidateReply:
         try:
             pdf_data = base64.b64decode(in_data.data.encode("utf-8"), validate=False)
         except Exception as e:
@@ -116,12 +138,29 @@ class Validator(Common, pb2_grpc.ValidatorServicer):
         return None
 
 class GRPCServer(Common):
+    GRACEFUL_SHUTDOWN_TIMEOUT = 30  # seconds to wait for in-progress RPCs
+
     def __init__(self) -> None:
         super().__init__()
+        self._shutdown_event = threading.Event()
+
+    def _remove_healthcheck(self):
+        """Remove healthcheck file so load balancer stops sending new requests."""
+        try:
+            os.remove('/tmp/healthcheck')
+            self.logger.info("Healthcheck file removed")
+        except FileNotFoundError:
+            pass
+
+    def _signal_handler(self, signum, frame):
+        sig_name = signal.Signals(signum).name
+        self.logger.info(f"Received {sig_name}, starting graceful shutdown")
+        self._shutdown_event.set()
 
     def start(self):
         server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-        pb2_grpc.add_ValidatorServicer_to_server(Validator(), server)
+        validator_servicer = Validator()
+        pb2_grpc.add_ValidatorServicer_to_server(validator_servicer, server)
 
         if self.config.grpc_server.tls_enabled:
             assert self.config.grpc_server.private_key_path is not None
@@ -136,10 +175,32 @@ class GRPCServer(Common):
 
             server.add_secure_port(self.config.grpc_server.addr, server_credentials)
 
+        # Register signal handlers for graceful shutdown
+        signal.signal(signal.SIGTERM, self._signal_handler)
+        signal.signal(signal.SIGINT, self._signal_handler)
+
         server.start()
         time.sleep(2)
-        open('/tmp/healthcheck','w')
-        server.wait_for_termination()
+        open('/tmp/healthcheck', 'w').close()
+        self.logger.info("Server started and ready to accept requests")
+
+        # Wait until a shutdown signal is received
+        self._shutdown_event.wait()
+
+        # Step 1: Remove healthcheck so no new traffic arrives
+        self._remove_healthcheck()
+
+        # Step 2: Gracefully stop – stops accepting new RPCs and waits
+        # for in-progress ones to complete (up to the timeout).
+        active = validator_servicer.active_validations
+        self.logger.info(
+            f"Graceful shutdown: waiting up to {self.GRACEFUL_SHUTDOWN_TIMEOUT}s "
+            f"for {active} in-progress validation(s) to complete"
+        )
+        shutdown_event = server.stop(grace=self.GRACEFUL_SHUTDOWN_TIMEOUT)
+        shutdown_event.wait()
+
+        self.logger.info("Server stopped gracefully")
 
 
 if __name__ == "__main__":

@@ -28,11 +28,6 @@ type Client struct {
 	Doc *Doc
 }
 
-type statusResult struct {
-	healthy bool
-	leader  bool
-}
-
 // New creates a new instance of kv
 func New(ctx context.Context, cfg *model.Cfg, tracer *trace.Tracer, log *logger.Log) (*Client, error) {
 	c := &Client{

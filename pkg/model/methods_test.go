@@ -1,13 +1,5 @@
 package model
 
-import (
-	"testing"
-)
-
-func diffError(t *testing.T, name, diff string) {
-	t.Errorf("Name:%s mismatch (-want +got):\n%s", name, diff)
-}
-
 //func TestMakeChannelEvents(t *testing.T) {
 //	tts := []struct {
 //		name string

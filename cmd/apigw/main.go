@@ -15,6 +15,7 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 )
 
 type service interface {
@@ -84,13 +85,39 @@ func main() {
 	mainLog := log.New("main")
 	mainLog.Info("HALTING SIGNAL!")
 
+	// Create shutdown context with timeout
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer shutdownCancel()
+
+	// 1. Stop HTTP server first - this stops accepting new requests and waits for in-flight requests
+	if httpService, ok := services["httpService"]; ok {
+		mainLog.Info("Shutting down HTTP server - waiting for in-flight requests...")
+		if err := httpService.Close(shutdownCtx); err != nil {
+			mainLog.Error(err, "HTTP server shutdown")
+		}
+		mainLog.Info("HTTP server stopped")
+		delete(services, "httpService")
+	}
+
+	// 2. Close stream service after HTTP server (no new requests can arrive)
+	if streamService, ok := services["streamService"]; ok {
+		mainLog.Info("Closing stream service...")
+		if err := streamService.Close(shutdownCtx); err != nil {
+			mainLog.Error(err, "Stream service close")
+		}
+		mainLog.Info("Stream service closed")
+		delete(services, "streamService")
+	}
+
+	// 3. Close remaining services
 	for serviceName, service := range services {
-		if err := service.Close(ctx); err != nil {
-			mainLog.Trace("serviceName", serviceName, "error", err)
+		mainLog.Info("Closing service", "service", serviceName)
+		if err := service.Close(shutdownCtx); err != nil {
+			mainLog.Error(err, "Service close", "service", serviceName)
 		}
 	}
 
-	if err := tracer.Shutdown(ctx); err != nil {
+	if err := tracer.Shutdown(shutdownCtx); err != nil {
 		mainLog.Error(err, "Tracer shutdown")
 	}
 

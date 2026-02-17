@@ -34,44 +34,52 @@ func newSealStream(ctx context.Context, service *Service) (*sealStream, error) {
 	return s, nil
 }
 
-// Publish publishes a message to the stream
+// Publish publishes a message to the stream with retry logic
 func (s *sealStream) Publish(ctx context.Context, payload []byte, transactionID string) error {
 	ctx, span := s.service.tp.Start(ctx, "stream:seal:PDFSign")
 	defer span.End()
 
-	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
-	defer cancel()
-
 	s.log.Info("Publishing", "transaction_id", transactionID)
 
-	ack, err := s.js.PublishMsg(ctx, &nats.Msg{
-		Subject: "SEAL",
-		Header: map[string][]string{
-			"Nats-Msg-Id": {transactionID},
-		},
-		Data: payload,
-		Sub: &nats.Subscription{
-			Queue: "sealers",
-		},
-	})
+	const maxRetries = 3
+	var lastErr error
 
-	//ack, err := s.js.Publish(ctx, "SEAL", payload, jetstream.WithMsgID(transactionID))
-	if err != nil {
-		span.SetStatus(codes.Error, err.Error())
-		s.log.Error(err, "Failed to publish")
-		return err
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		pubCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+
+		ack, err := s.js.PublishMsg(pubCtx, &nats.Msg{
+			Subject: "SEAL",
+			Header: map[string][]string{
+				"Nats-Msg-Id": {transactionID},
+			},
+			Data: payload,
+			Sub: &nats.Subscription{
+				Queue: "sealers",
+			},
+		})
+		cancel()
+
+		if err == nil {
+			s.log.Debug("Published", "transaction_id", transactionID, "ack", ack, "attempt", attempt)
+			return nil
+		}
+
+		lastErr = err
+		s.log.Error(err, "Failed to publish, retrying", "transaction_id", transactionID, "attempt", attempt, "max_retries", maxRetries)
+
+		if attempt < maxRetries {
+			select {
+			case <-ctx.Done():
+				span.SetStatus(codes.Error, ctx.Err().Error())
+				return ctx.Err()
+			case <-time.After(time.Duration(attempt) * time.Second):
+			}
+		}
 	}
 
-	s.log.Debug("Published", "transaction_id", transactionID, "ack", ack)
-
-	//	select {
-	//	case <-s.service.stream.PublishAsyncComplete():
-	//		s.log.Debug("Published", "transaction_id", transactionID)
-	//	case <-time.After(5 * time.Second):
-	//		s.log.Debug("Failed to publish", "transaction_id", transactionID)
-	//	}
-
-	return nil
+	span.SetStatus(codes.Error, lastErr.Error())
+	s.log.Error(lastErr, "Failed to publish after all retries", "transaction_id", transactionID)
+	return lastErr
 }
 
 func (s *sealStream) createStream(ctx context.Context) error {
@@ -104,6 +112,8 @@ func (s *sealStream) createStream(ctx context.Context) error {
 		Durable:       "sealer",
 		AckPolicy:     jetstream.AckExplicitPolicy,
 		FilterSubject: "SEAL",
+		MaxDeliver:    5,
+		BackOff:       []time.Duration{500 * time.Millisecond, 1 * time.Second, 2 * time.Second, 3 * time.Second},
 	})
 	if err != nil {
 		s.log.Error(err, "Failed to create seal_stream consumer")

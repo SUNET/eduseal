@@ -31,11 +31,21 @@ class Queue(BaseModel):
     password: str
     addr: List[str]
 
+class SealRetry(BaseModel):
+    max_retries: int = 3
+    retry_delay: float = 2.0
+
+class QueueRetry(BaseModel):
+    max_retries: int = 10
+    retry_delay: float = 3.0
+
 class CFG(BaseModel):
     grpc_server: GRPCServer
     queue: Queue
     pkcs11: PKCS11
     metadata: PdfSignatureMetadata
+    seal_retry: SealRetry = SealRetry()
+    queue_retry: QueueRetry = QueueRetry()
 
 def parse(log: Logger) -> CFG:
     file_name = os.getenv("EDUSEAL_CONFIG_YAML")

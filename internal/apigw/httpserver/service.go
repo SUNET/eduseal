@@ -126,8 +126,17 @@ func renderContent(c *gin.Context, code int, data any) {
 	}
 }
 
-// Close closing httpserver
+// Close implements graceful shutdown of the HTTP server.
+// It stops accepting new requests and waits for in-flight requests to complete.
 func (s *Service) Close(ctx context.Context) error {
-	s.logger.Info("Quit")
+	s.logger.Info("Starting graceful shutdown...")
+
+	// Shutdown gracefully waits for active connections to finish
+	if err := s.server.Shutdown(ctx); err != nil {
+		s.logger.Error(err, "HTTP server shutdown error")
+		return err
+	}
+
+	s.logger.Info("Graceful shutdown complete")
 	return nil
 }

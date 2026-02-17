@@ -4,6 +4,7 @@ import os
 import base64
 import signal
 import json
+import time
 
 from pkcs11 import Session, UserAlreadyLoggedIn
 from pyhanko.sign.pkcs11 import open_pkcs11_session
@@ -28,6 +29,9 @@ class Common():
         self.service_name = os.getenv("EDUSEAL_SERVICE_NAME", "eduseal_sealer")
         self.logger = logging.getLogger(self.service_name)
         self.logger.setLevel(logging.DEBUG)
+        
+        # Clear any existing handlers to avoid duplicates
+        self.logger.handlers.clear()
         
         # Console handler
         ch = logging.StreamHandler()
@@ -73,6 +77,7 @@ class Sealer(Common, pb2_grpc.SealerServicer):
     async def Seal(self, in_data: SealRequest)-> SealReply:
         self.logger.debug("start sealing")
         self.logger.debug(f"transaction_id: {in_data.transaction_id}")
+        seal_start_time = time.monotonic()
 
         try:
             decoded_pdf = base64.urlsafe_b64decode(in_data.data)
@@ -168,6 +173,10 @@ class Sealer(Common, pb2_grpc.SealerServicer):
 
         signed_pdf.close()
 
+        seal_elapsed = time.monotonic() - seal_start_time
+        if seal_elapsed > 4.0:
+            self.logger.error(f"sealing took {seal_elapsed:.2f}s (>{4.0}s) for transaction_id: {in_data.transaction_id}")
+
         self.logger.info(f"signing done {in_data.transaction_id}")
     
         return SealReply(
@@ -181,22 +190,36 @@ class QueueServer(Common):
     def __init__(self) -> None:
         super().__init__()
         self.sealer = Sealer()
+        self._shutdown_event = asyncio.Event()
+
+    async def _graceful_nats_shutdown(self, nc: NATS):
+        """Gracefully shut down the NATS connection."""
+        self.logger.info("Graceful shutdown: draining NATS connection...")
+        try:
+            await nc.drain()
+        except Exception as e:
+            self.logger.warning(f"Error during NATS drain: {e}")
+            try:
+                if not nc.is_closed:
+                    await nc.close()
+            except Exception as close_e:
+                self.logger.warning(f"Error during NATS close: {close_e}")
+
+        self.logger.info("Graceful shutdown complete")
+
+        if os.path.exists('/tmp/healthcheck'):
+            os.remove('/tmp/healthcheck')
 
     async def start(self):
         self.logger.debug("start queue server")
         nc = NATS()
         js = nc.jetstream()
 
-        async def stop():
-            await asyncio.sleep(1)
-            asyncio.get_running_loop().stop()
-
         def signal_handler():
-            if nc.is_closed:
+            if self._shutdown_event.is_set():
                 return
-            print("Disconnecting...")
-            asyncio.create_task(nc.close())
-            asyncio.create_task(stop())
+            self.logger.info("Received shutdown signal, initiating graceful shutdown (waiting for any in-progress sealing to complete)...")
+            self._shutdown_event.set()
 
         for sig in ("SIGINT", "SIGTERM"):
             asyncio.get_running_loop().add_signal_handler(
@@ -204,67 +227,151 @@ class QueueServer(Common):
             )
 
         async def disconnected_cb():
-            self.logger.info("Got disconnected...")
+            self.logger.info("Queue: got disconnected...")
+            if os.path.exists('/tmp/healthcheck'):
+                os.remove('/tmp/healthcheck')
+                self.logger.info("Healthcheck removed (unhealthy)")
 
         async def reconnected_cb():
-            self.logger.info("Got reconnected...")
+            self.logger.info("Queue: got reconnected...")
+            open('/tmp/healthcheck', 'w').close()
+            self.logger.info("Healthcheck restored (healthy)")
 
         async def error_cb(e):
-            self.logger.error(f"error: {e}")
+            self.logger.error(f"Queue: error: {e}")
 
         async def closed_cb():
-            self.logger.info("Connection to NATS is closed...")
+            self.logger.info("Queue: Connection to NATS is closed...")
 
-        await nc.connect(
-            servers=self.config.queue.addr,
-            user=self.config.queue.username,
-            password=self.config.queue.password,
-            closed_cb=closed_cb,
-            allow_reconnect=True,
-            reconnected_cb=reconnected_cb,
-            disconnected_cb=disconnected_cb,
-            error_cb=error_cb,
-            max_reconnect_attempts=-1,
-            reconnect_time_wait=5,
-        )
-        self.logger.info(f"Connected to NATS at {nc.connected_url.netloc}...")
+        max_retries = self.config.queue_retry.max_retries
+        retry_delay = self.config.queue_retry.retry_delay
+
+        for attempt in range(1, max_retries + 1):
+            try:
+                await nc.connect(
+                    servers=self.config.queue.addr,
+                    user=self.config.queue.username,
+                    password=self.config.queue.password,
+                    closed_cb=closed_cb,
+                    allow_reconnect=True,
+                    reconnected_cb=reconnected_cb,
+                    disconnected_cb=disconnected_cb,
+                    error_cb=error_cb,
+                    max_reconnect_attempts=-1,
+                    reconnect_time_wait=5,
+                )
+                self.logger.info(f"Connected to NATS at {nc.connected_url.netloc}...")
+                break
+            except Exception as e:
+                self.logger.error(f"NATS connection attempt {attempt}/{max_retries} failed: {e}")
+                if attempt < max_retries:
+                    self.logger.info(f"Retrying NATS connection in {retry_delay}s...")
+                    await asyncio.sleep(retry_delay)
+                else:
+                    self.logger.error(f"All {max_retries} NATS connection attempts failed, exiting")
+                    raise
 
         async def sealer_msg_handler(msg):
             self.logger.info(f"Received a message on subject: {msg.subject} header: {msg.headers}")
 
             await msg.in_progress()
 
-            reply = await self.sealer.Seal(in_data=SealRequest(**json.loads(msg.data)))
+            max_retries = self.config.seal_retry.max_retries
+            retry_delay = self.config.seal_retry.retry_delay
+            last_reply = None
+
+            for attempt in range(1, max_retries + 1):
+                self.logger.info(f"Seal attempt {attempt}/{max_retries} for msg {msg.headers.get('Nats-Msg-Id', 'unknown')}")
+
+                reply = await self.sealer.Seal(in_data=SealRequest(**json.loads(msg.data)))
+                last_reply = reply
+
+                if not reply.error:
+                    self.logger.info(f"Seal succeeded on attempt {attempt}/{max_retries}")
+                    break
+
+                self.logger.warning(f"Seal attempt {attempt}/{max_retries} failed: {reply.error}")
+
+                if attempt < max_retries:
+                    self.logger.info(f"Re-initializing PKCS11 session before retry (waiting {retry_delay}s)")
+                    await asyncio.sleep(retry_delay)
+                    await msg.in_progress()
+                    try:
+                        self.sealer.init_pkcs11_session()
+                    except Exception as _e:
+                        self.logger.error(f"PKCS11 session re-init failed: {_e}")
+                else:
+                    self.logger.error(f"All {max_retries} seal attempts failed for msg {msg.headers.get('Nats-Msg-Id', 'unknown')}")
+
+            if last_reply.error:
+                self.logger.error(f"Nacking message {msg.headers.get('Nats-Msg-Id', 'unknown')} after all retries exhausted")
+                await msg.nak(delay=retry_delay)
+                return
+
             d = dict(
-                transaction_id=reply.transaction_id,
-                data=reply.data,
-                error=reply.error,
-                sealer_backend=reply.sealer_backend,
+                transaction_id=last_reply.transaction_id,
+                data=last_reply.data,
+                error=last_reply.error,
+                sealer_backend=last_reply.sealer_backend,
             )
-            await js.publish(
-                subject="CACHE",
-                payload=json.dumps(d).encode(),
-                headers={"Nats-Msg-Id": msg.headers["Nats-Msg-Id"]},
-            )
-            await msg.ack()
+            try:
+                await js.publish(
+                    subject="CACHE",
+                    payload=json.dumps(d).encode(),
+                    headers={"Nats-Msg-Id": msg.headers["Nats-Msg-Id"]},
+                )
+                await msg.ack()
+            except Exception as e:
+                self.logger.error(f"Failed to publish/ack sealed result: {e}")
+                try:
+                    await msg.nak(delay=self.config.seal_retry.retry_delay)
+                except Exception as nak_e:
+                    self.logger.error(f"Failed to nak message: {nak_e}")
+                raise
 
 
         sub_sealer = await js.pull_subscribe(subject="SEAL", durable="sealer")
 
-        while True:
-            msgs = await sub_sealer.fetch(1, timeout=31560000)
-            self.logger.info(f"msg: {msgs[0].headers}")
-            await sealer_msg_handler(msgs[0])
+        while not self._shutdown_event.is_set():
+            try:
+                msgs = await sub_sealer.fetch(1, timeout=1)
+            except asyncio.TimeoutError:
+                continue
+            except Exception as e:
+                if self._shutdown_event.is_set():
+                    break
+                self.logger.error(f"Fetch error: {e}")
+                await asyncio.sleep(1)
+                continue
+
+            try:
+                self.logger.info(f"msg: {msgs[0].headers}")
+                await sealer_msg_handler(msgs[0])
+            except Exception as e:
+                self.logger.error(f"Message handler error: {e}")
+                await asyncio.sleep(1)
+
+        await self._graceful_nats_shutdown(nc)
+        asyncio.get_running_loop().stop()
 
 
 if __name__ == "__main__":
+    healthcheck_path = '/tmp/healthcheck'
     server = QueueServer()
     loop = asyncio.get_event_loop()
     try:
-        open('/tmp/healthcheck','w')
+        open(healthcheck_path, 'w').close()
         loop.run_until_complete(server.start())
         loop.run_forever()
-        loop.close()
     except Exception as e:
         server.logger.error(f"error {e}")
-        pass
+    finally:
+        if os.path.exists(healthcheck_path):
+            os.remove(healthcheck_path)
+        # Cancel all pending tasks to avoid "Task was destroyed but it is pending!" warnings
+        pending = asyncio.all_tasks(loop)
+        for task in pending:
+            task.cancel()
+        if pending:
+            loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+        loop.close()
