@@ -23,6 +23,7 @@ from eduseal.sealer.config import parse, CFG
 
 import asyncio
 from nats.aio.client import Client as NATS
+from nats.js.api import StreamConfig, RetentionPolicy, ConsumerConfig, AckPolicy
 
 class Common():
     def __init__(self) -> None:
@@ -261,6 +262,8 @@ class QueueServer(Common):
                     reconnect_time_wait=5,
                 )
                 self.logger.info(f"Connected to NATS at {nc.connected_url.netloc}...")
+                open('/tmp/healthcheck', 'w').close()
+                self.logger.info("Healthcheck created (healthy)")
                 break
             except Exception as e:
                 self.logger.error(f"NATS connection attempt {attempt}/{max_retries} failed: {e}")
@@ -330,9 +333,45 @@ class QueueServer(Common):
                 raise
 
 
-        sub_sealer = await js.pull_subscribe(subject="SEAL", durable="sealer")
+        # Ensure JetStream stream and consumer exist (matching apigw seal_stream.go config)
+        try:
+            await js.find_stream_name_by_subject("SEAL")
+            self.logger.info("JetStream stream for subject SEAL already exists")
+        except Exception:
+            self.logger.info("Creating JetStream stream 'seal_stream' for subject SEAL")
+            await js.add_stream(StreamConfig(
+                name="seal_stream",
+                subjects=["SEAL"],
+                retention=RetentionPolicy.WORK_QUEUE,
+                no_ack=False,
+            ))
+
+        try:
+            await js.consumer_info("seal_stream", "sealer")
+            self.logger.info("JetStream consumer 'sealer' already exists")
+        except Exception:
+            self.logger.info("Creating JetStream consumer 'sealer'")
+            await js.add_consumer("seal_stream", ConsumerConfig(
+                durable_name="sealer",
+                ack_policy=AckPolicy.EXPLICIT,
+                filter_subject="SEAL",
+                max_deliver=5,
+            ))
+
+        sub_sealer = await js.pull_subscribe(subject="SEAL", durable="sealer", stream="seal_stream")
+        healthcheck_path = '/tmp/healthcheck'
 
         while not self._shutdown_event.is_set():
+            # Periodic NATS connectivity check
+            if nc.is_connected:
+                if not os.path.exists(healthcheck_path):
+                    open(healthcheck_path, 'w').close()
+                    self.logger.info("Healthcheck restored (NATS connected)")
+            else:
+                if os.path.exists(healthcheck_path):
+                    os.remove(healthcheck_path)
+                    self.logger.warning("Healthcheck removed (NATS not connected)")
+
             try:
                 msgs = await sub_sealer.fetch(1, timeout=1)
             except asyncio.TimeoutError:
@@ -358,9 +397,9 @@ class QueueServer(Common):
 if __name__ == "__main__":
     healthcheck_path = '/tmp/healthcheck'
     server = QueueServer()
-    loop = asyncio.get_event_loop()
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     try:
-        open(healthcheck_path, 'w').close()
         loop.run_until_complete(server.start())
         loop.run_forever()
     except Exception as e:

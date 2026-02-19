@@ -9,4 +9,9 @@ docker/sealer/softhsm/*.der
 docker/sealer/softhsm/*.crt
 config.yaml
 client.cert
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
 client.key
