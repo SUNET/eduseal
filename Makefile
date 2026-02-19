@@ -61,9 +61,13 @@ ifndef VERSION
 VERSION := latest
 endif
 
+GIT_COMMIT := $(shell git rev-parse --short HEAD)
+BUILD_DATE := $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
+NOCTOOL_LDFLAGS := -ldflags "-w -s --extldflags '-static' -X main.GitCommit=$(GIT_COMMIT) -X main.BuildDate=$(BUILD_DATE)"
+
 build-noctool:
 	$(info Building noctool)
-	go build $(LDFLAGS) -o bin/noctool ./cmd/noctool
+	go build $(NOCTOOL_LDFLAGS) -o bin/noctool ./cmd/noctool
 
 
 DOCKER_TAG_APIGW 				:= docker.sunet.se/eduseal/apigw:$(VERSION)

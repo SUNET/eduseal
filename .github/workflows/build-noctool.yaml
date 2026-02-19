@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+    tags-ignore:
+      - "noctool-v*"
 
 permissions:
   contents: read
@@ -27,7 +29,7 @@ jobs:
           GOOS: linux
           GOARCH: amd64
         run: |
-          go build -ldflags "-w -s --extldflags '-static'" \
+          go build -ldflags "-w -s --extldflags '-static' -X main.GitCommit=$(git rev-parse --short HEAD) -X main.BuildDate=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
             -o bin/noctool \
             ./cmd/noctool
 

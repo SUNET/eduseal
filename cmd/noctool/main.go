@@ -19,6 +19,11 @@ import (
 )
 
 var (
+	GitCommit = "unknown"
+	BuildDate = "unknown"
+)
+
+var (
 	endpointSeal         = "/api/v1/pdf/sign"
 	endpointValidate     = "/api/v1/pdf/validate"
 	endpointGetSealedPDF = "/api/v1/pdf/%s"
@@ -118,8 +123,14 @@ type Client struct {
 }
 
 func main() {
+	versionFlag := flag.Bool("version", false, "print version and exit")
 	configFlag := flag.String("config", "", "path to YAML config file")
 	flag.Parse()
+
+	if *versionFlag {
+		fmt.Printf("noctool git:%s built:%s\n", GitCommit, BuildDate)
+		os.Exit(0)
+	}
 
 	config, err := loadAccessRequestBody(*configFlag)
 	if err != nil {
