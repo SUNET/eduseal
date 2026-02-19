@@ -52,7 +52,7 @@ The [.jenkins.yaml](../.jenkins.yaml) in the repo root defines the pipeline. To 
 1. **Create a Multibranch Pipeline** job in Jenkins pointing to this repository.
 2. Under **Branch Sources**, configure:
    - **Discover tags**: Enable tag discovery.
-   - **Filter by name (with regular expression)**: `^(prod-|noctool-)?v\d+\.\d+\.\d+$`
+   - **Filter by name (with regular expression)**: `^(prod-)?v\d+\.\d+\.\d+$`
 3. Under **Build Configuration**, set:
    - **Script Path**: `.jenkins.yaml`
 4. Optionally configure a **webhook** from your Git hosting to Jenkins so that tag pushes trigger builds immediately.

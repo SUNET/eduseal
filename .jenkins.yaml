@@ -2,7 +2,6 @@
 // Triggered by tag pushes:
 //   v<major>.<minor>.<patch>          — build + push all services (tagged <version> + testing)
 //   prod-v<major>.<minor>.<patch>     — promote existing images to :prod (no rebuild)
-//   noctool-v<major>.<minor>.<patch>  — build noctool binary
 
 pipeline {
     agent any
@@ -41,15 +40,6 @@ pipeline {
                         env.PROMOTE  = 'false'
                         env.VERSION  = env.GIT_TAG
                         echo "Release build: ${env.VERSION}"
-                        return
-                    }
-
-                    // Check for noctool tag: noctool-vX.Y.Z
-                    def noctoolMatcher = (env.GIT_TAG =~ /^noctool-v(\d+\.\d+\.\d+)$/)
-                    if (noctoolMatcher.matches()) {
-                        env.NOCTOOL  = 'true'
-                        env.VERSION  = "v${noctoolMatcher[0][1]}"
-                        echo "Noctool build: ${env.VERSION}"
                         return
                     }
 
@@ -130,19 +120,6 @@ pipeline {
                 """
             }
         }
-        stage('Build Noctool') {
-            when { expression { env.NOCTOOL == 'true' } }
-            steps {
-                sh """
-                    GIT_COMMIT=\$(git rev-parse --short HEAD)
-                    BUILD_DATE=\$(date -u +'%Y-%m-%dT%H:%M:%SZ')
-                    go build \
-                        -ldflags "-w -s --extldflags '-static' -X main.GitCommit=\${GIT_COMMIT} -X main.BuildDate=\${BUILD_DATE} -X main.Version=${env.VERSION}" \
-                        -o bin/noctool ./cmd/noctool
-                """
-                archiveArtifacts artifacts: 'bin/noctool', fingerprint: true
-            }
-        }
     }
 
     post {
@@ -150,8 +127,6 @@ pipeline {
             script {
                 if (env.PROMOTE == 'true') {
                     echo "Promoted ${env.VERSION} to prod successfully."
-                } else if (env.NOCTOOL == 'true') {
-                    echo "Built noctool ${env.VERSION} successfully."
                 } else {
                     echo "Released all services at ${env.VERSION} successfully."
                 }
