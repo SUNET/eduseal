@@ -4,8 +4,14 @@ on:
   push:
     branches:
       - main
+    paths:
+      - "cmd/noctool/**"
+      - "pkg/**"
+      - "go.mod"
+      - "go.sum"
+      - ".github/workflows/build-noctool.yaml"
     tags-ignore:
-      - "noctool-v*"
+      - "**"
 
 permissions:
   contents: read
