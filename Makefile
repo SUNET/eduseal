@@ -69,6 +69,19 @@ build-noctool:
 	$(info Building noctool)
 	go build $(NOCTOOL_LDFLAGS) -o bin/noctool ./cmd/noctool
 
+release-noctool:
+ifndef NOCTOOL_VERSION
+	$(error NOCTOOL_VERSION is required, e.g. make release-noctool NOCTOOL_VERSION=v1.0.0)
+endif
+	@echo "$(NOCTOOL_VERSION)" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$$' || \
+		{ echo "Error: NOCTOOL_VERSION must match v<major>.<minor>.<patch>, e.g. v1.0.0 (got: $(NOCTOOL_VERSION))"; exit 1; }
+	@if git rev-parse "noctool-$(NOCTOOL_VERSION)" >/dev/null 2>&1; then \
+		echo "Error: tag noctool-$(NOCTOOL_VERSION) already exists"; exit 1; \
+	fi
+	$(info Tagging and pushing noctool-$(NOCTOOL_VERSION))
+	git tag noctool-$(NOCTOOL_VERSION)
+	git push origin noctool-$(NOCTOOL_VERSION)
+
 
 DOCKER_TAG_APIGW 				:= docker.sunet.se/eduseal/apigw:$(VERSION)
 DOCKER_TAG_GOBUILD 				:= docker.sunet.se/eduseal/gobuild:$(VERSION)
@@ -135,27 +148,48 @@ docker-push-gobuild:
 	$(info Pushing docker images)
 	docker push $(DOCKER_TAG_GOBUILD)
 
-docker-tag-apigw:
-	$(info Tagging docker images)
-	docker tag $(DOCKER_TAG_APIGW) docker.sunet.se/eduseal/apigw:$(NEWTAG)
+#### Release targets
+# Creates a single vX.Y.Z tag for ALL services (apigw, sealer, validator).
+# Usage:
+#   make release               # defaults to patch bump
+#   make release BUMP=patch    # v1.0.0 -> v1.0.1
+#   make release BUMP=minor    # v1.0.0 -> v1.1.0
+#   make release BUMP=major    # v1.0.0 -> v2.0.0
 
-docker-tag-verifier:
-	$(info Tagging docker images)
-	docker tag $(DOCKER_TAG_VERIFIER) docker.sunet.se/eduseal/verifier:$(NEWTAG)
-
-docker-tag: docker-tag-apigw
-	$(info Tagging docker images)
+BUMP ?= patch
 
 release:
-	$(info Release version: $(VERSION))
-	git tag $(VERSION)
-	git push origin ${VERSION}
-	make docker-build
-	make docker-push
-	$(info Release version $(VERSION) done)
-	$(info tag $(NEWTAG) from $(VERSION))
-	make docker-tag
-	make VERSION=$(NEWTAG) docker-push
+	@echo "$(BUMP)" | grep -qE '^(major|minor|patch)$$' || \
+		{ echo "Error: BUMP must be major, minor, or patch (got: $(BUMP))"; exit 1; }
+	@if ! git diff --quiet HEAD 2>/dev/null; then \
+		echo "Error: working tree is dirty — commit or stash changes first"; exit 1; \
+	fi
+	@LATEST=$$(git tag -l "v*" --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$$' | head -n1); \
+	if [ -z "$$LATEST" ]; then \
+		echo "No existing version tags found, starting at v0.0.0"; \
+		LATEST="v0.0.0"; \
+	fi; \
+	CURRENT=$$(echo "$$LATEST" | sed 's/^v//'); \
+	MAJOR=$$(echo "$$CURRENT" | cut -d. -f1); \
+	MINOR=$$(echo "$$CURRENT" | cut -d. -f2); \
+	PATCH=$$(echo "$$CURRENT" | cut -d. -f3); \
+	case "$(BUMP)" in \
+		major) MAJOR=$$((MAJOR + 1)); MINOR=0; PATCH=0 ;; \
+		minor) MINOR=$$((MINOR + 1)); PATCH=0 ;; \
+		patch) PATCH=$$((PATCH + 1)) ;; \
+	esac; \
+	NEW_TAG="v$$MAJOR.$$MINOR.$$PATCH"; \
+	echo ""; \
+	echo "$$LATEST -> $$NEW_TAG"; \
+	echo ""; \
+	if git rev-parse "$$NEW_TAG" >/dev/null 2>&1; then \
+		echo "Error: tag $$NEW_TAG already exists"; exit 1; \
+	fi; \
+	git tag -a "$$NEW_TAG" -m "Release $$NEW_TAG (apigw, sealer, validator)"; \
+	git push origin "$$NEW_TAG"; \
+	echo ""; \
+	echo "==> $$NEW_TAG pushed. Jenkins will build apigw, sealer, and validator."; \
+	echo ""
 
 docker-pull:
 	$(info Pulling docker images)
