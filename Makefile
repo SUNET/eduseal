@@ -1,4 +1,4 @@
-.PHONY : docker-build docker-push release PIPCOMPILE
+.PHONY : docker-build docker-push release release-prod PIPCOMPILE
 
 NAME 					:= eduseal
 LDFLAGS                 := -ldflags "-w -s --extldflags '-static'"
@@ -191,11 +191,41 @@ release:
 	echo "==> $$NEW_TAG pushed. Jenkins will build apigw, sealer, and validator."; \
 	echo ""
 
+#### Prod promotion
+# Promotes a version to prod by pushing a prod-vX.Y.Z git tag.
+# Jenkins will pull the existing image, re-tag as :prod, and push. No rebuild.
+# Usage:
+#   make release-prod              # promotes latest vX.Y.Z tag to prod
+#   make release-prod TAG=v1.2.3   # promotes v1.2.3 to prod
+
+release-prod:
+	@if [ -n "$(TAG)" ]; then \
+		SRC_TAG="$(TAG)"; \
+	else \
+		SRC_TAG=$$(git tag -l "v*" --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$$' | head -n1); \
+		if [ -z "$$SRC_TAG" ]; then \
+			echo "Error: no version tags found. Run 'make release' first."; exit 1; \
+		fi; \
+	fi; \
+	echo "$$SRC_TAG" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$$' || \
+		{ echo "Error: TAG must match vX.Y.Z (got: $$SRC_TAG)"; exit 1; }; \
+	PROD_TAG="prod-$$SRC_TAG"; \
+	if git rev-parse "$$PROD_TAG" >/dev/null 2>&1; then \
+		echo "Error: tag $$PROD_TAG already exists"; exit 1; \
+	fi; \
+	echo ""; \
+	echo "Promoting $$SRC_TAG -> prod"; \
+	echo ""; \
+	git tag -a "$$PROD_TAG" -m "Promote $$SRC_TAG to prod"; \
+	git push origin "$$PROD_TAG"; \
+	echo ""; \
+	echo "==> $$PROD_TAG pushed. Jenkins will re-tag images as :prod (no rebuild)."; \
+	echo ""
+
 docker-pull:
 	$(info Pulling docker images)
 	docker pull $(DOCKER_TAG_APIGW)
 	docker pull $(DOCKER_TAG_GOBUILD)
-	docker pull $(DOCKER_TAG_PERSISTENT)
 
 docker-archive:
 	docker save --output docker_archives/eduseal_$(VERSION).tar $(DOCKER_TAG_VERIFIER) $(DOCKER_TAG_DATASTORE) $(DOCKER_TAG_REGISTRY)

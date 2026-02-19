@@ -2,7 +2,25 @@
 
 ## docker release version
 
-`latest` tracks the latest tag available and is build from branch `main`.
+`testing` tracks the latest release tag and is built from branch `main`.
+`prod` is promoted from a specific version — no rebuild, just a re-tag.
+
+See [docs/RELEASE.md](docs/RELEASE.md) for the full release process.
+
+### Quick reference
+
+```bash
+# Create a new release (patch bump by default)
+make release
+
+# Bump minor or major
+make release BUMP=minor
+make release BUMP=major
+
+# Promote to production
+make release-prod              # promotes the latest version
+make release-prod TAG=v1.2.3   # promotes a specific version
+```
 
 ## branches
 
