@@ -1,4 +1,4 @@
-.PHONY : docker-build docker-push release release-prod PIPCOMPILE
+.PHONY : docker-build docker-push release release-prod release-noctool PIPCOMPILE
 
 NAME 					:= eduseal
 LDFLAGS                 := -ldflags "-w -s --extldflags '-static'"
@@ -70,17 +70,37 @@ build-noctool:
 	go build $(NOCTOOL_LDFLAGS) -o bin/noctool ./cmd/noctool
 
 release-noctool:
-ifndef NOCTOOL_VERSION
-	$(error NOCTOOL_VERSION is required, e.g. make release-noctool NOCTOOL_VERSION=v1.0.0)
-endif
-	@echo "$(NOCTOOL_VERSION)" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$$' || \
-		{ echo "Error: NOCTOOL_VERSION must match v<major>.<minor>.<patch>, e.g. v1.0.0 (got: $(NOCTOOL_VERSION))"; exit 1; }
-	@if git rev-parse "noctool-$(NOCTOOL_VERSION)" >/dev/null 2>&1; then \
-		echo "Error: tag noctool-$(NOCTOOL_VERSION) already exists"; exit 1; \
+	@echo "$(BUMP)" | grep -qE '^(major|minor|patch)$$' || \
+		{ echo "Error: BUMP must be major, minor, or patch (got: $(BUMP))"; exit 1; }
+	@if ! git diff --quiet HEAD 2>/dev/null; then \
+		echo "Error: working tree is dirty — commit or stash changes first"; exit 1; \
 	fi
-	$(info Tagging and pushing noctool-$(NOCTOOL_VERSION))
-	git tag noctool-$(NOCTOOL_VERSION)
-	git push origin noctool-$(NOCTOOL_VERSION)
+	@LATEST=$$(git tag -l "noctool-v*" --sort=-v:refname | grep -E '^noctool-v[0-9]+\.[0-9]+\.[0-9]+$$' | head -n1); \
+	if [ -z "$$LATEST" ]; then \
+		echo "No existing noctool tags found, starting at noctool-v0.0.0"; \
+		LATEST="noctool-v0.0.0"; \
+	fi; \
+	CURRENT=$$(echo "$$LATEST" | sed 's/^noctool-v//'); \
+	MAJOR=$$(echo "$$CURRENT" | cut -d. -f1); \
+	MINOR=$$(echo "$$CURRENT" | cut -d. -f2); \
+	PATCH=$$(echo "$$CURRENT" | cut -d. -f3); \
+	case "$(BUMP)" in \
+		major) MAJOR=$$((MAJOR + 1)); MINOR=0; PATCH=0 ;; \
+		minor) MINOR=$$((MINOR + 1)); PATCH=0 ;; \
+		patch) PATCH=$$((PATCH + 1)) ;; \
+	esac; \
+	NEW_TAG="noctool-v$$MAJOR.$$MINOR.$$PATCH"; \
+	echo ""; \
+	echo "$$LATEST -> $$NEW_TAG"; \
+	echo ""; \
+	if git rev-parse "$$NEW_TAG" >/dev/null 2>&1; then \
+		echo "Error: tag $$NEW_TAG already exists"; exit 1; \
+	fi; \
+	git tag -a "$$NEW_TAG" -m "Release $$NEW_TAG"; \
+	git push origin "$$NEW_TAG"; \
+	echo ""; \
+	echo "==> $$NEW_TAG pushed. GitHub Actions will build noctool binaries."; \
+	echo ""
 
 
 DOCKER_TAG_APIGW 				:= docker.sunet.se/eduseal/apigw:$(VERSION)
