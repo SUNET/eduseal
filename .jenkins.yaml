@@ -7,10 +7,12 @@
 triggers:
   - github_push
 
-git_branches:
+branches:
   - "main"
   - "refs/tags/v*"
   - "refs/tags/prod-v*"
+
+refspec: "+refs/heads/*:refs/remotes/origin/* +refs/tags/*:refs/remotes/origin/tags/*"
 
 builders:
   - script
