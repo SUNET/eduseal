@@ -1,41 +1,34 @@
-FROM debian:stable
+FROM debian:stable-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-pip \
+    python3-venv \
+    python3-dev \
+    build-essential \
     netcat-traditional \
     dnsutils \
-    git \
     openssl \
-    vim-tiny \
-    bsdmainutils \
     curl \
-    wget \
-    unzip \ 
-    python3-venv \
-    iputils-ping \
-    procps \
-    net-tools \
-    bind9-host \
     procps \
     opensc-pkcs11 \
     opensc \
     usbutils \
     libpcsclite1 \
-    libgtk2.0-0 \
-    libpango-1.0-0
-
-RUN rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /opt/sunet
 COPY requirements.txt ./
+RUN python3 -mvenv /opt/sunet/venv \
+    && /opt/sunet/venv/bin/pip install --no-cache-dir --upgrade pip wheel \
+    && /opt/sunet/venv/bin/pip install --no-cache-dir --index-url https://pypi.sunet.se/simple -r /opt/sunet/requirements.txt
+
+# Remove build dependencies no longer needed at runtime
+RUN apt-get purge -y --auto-remove build-essential python3-dev && rm -rf /var/lib/apt/lists/*
+
 COPY src ./src
 COPY docker/validator/start.sh ./
-
-RUN python3 -mvenv /opt/sunet/venv
-RUN /opt/sunet/venv/bin/pip install --upgrade pip wheel
-RUN /opt/sunet/venv/bin/pip install --index-url https://pypi.sunet.se/simple -r /opt/sunet/requirements.txt
 
 RUN mkdir -p /var/log/sunet && chmod 770 /var/log/sunet
 
