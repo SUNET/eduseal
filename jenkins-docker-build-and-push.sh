@@ -27,22 +27,56 @@ fi
 
 REGISTRY="docker.sunet.se/eduseal"
 
-# Build and push apigw
+# --- Build all images in parallel ---
+
+build_and_push() {
+    local name="$1"
+    local tag="$2"
+    local dockerfile="$3"
+    shift 3
+    local build_args=("$@")
+
+    echo "$script_name: building $tag"
+    docker build "${build_args[@]}" --tag "$tag" --file "$dockerfile" .
+    docker push "$tag"
+
+    # Also tag and push as :test for rolling test deployments
+    local test_tag="${tag%:*}:test"
+    docker tag "$tag" "$test_tag"
+    docker push "$test_tag"
+
+    echo "$script_name: $name done ($tag + $test_tag)"
+}
+
+pids=()
+
+# Build apigw
 DOCKER_TAG_APIGW="$REGISTRY/apigw:$VERSION"
-echo "$script_name: building $DOCKER_TAG_APIGW"
-docker build --build-arg "SERVICE_NAME=apigw" --build-arg "VERSION=$VERSION" --tag "$DOCKER_TAG_APIGW" --file docker/apigw/Dockerfile .
-docker push "$DOCKER_TAG_APIGW"
+build_and_push "apigw" "$DOCKER_TAG_APIGW" "docker/apigw/Dockerfile" \
+    --build-arg "SERVICE_NAME=apigw" --build-arg "VERSION=$VERSION" &
+pids+=($!)
 
-# Build and push sealer (lunahsm)
+# Build sealer (lunahsm)
 DOCKER_TAG_SEALER="$REGISTRY/sealer_lunahsm:$VERSION"
-echo "$script_name: building $DOCKER_TAG_SEALER"
-docker build --tag "$DOCKER_TAG_SEALER" --file docker/sealer/lunahsm/Dockerfile .
-docker push "$DOCKER_TAG_SEALER"
+build_and_push "sealer_lunahsm" "$DOCKER_TAG_SEALER" "docker/sealer/lunahsm/Dockerfile" &
+pids+=($!)
 
-# Build and push validator
+# Build validator
 DOCKER_TAG_VALIDATOR="$REGISTRY/validator:$VERSION"
-echo "$script_name: building $DOCKER_TAG_VALIDATOR"
-docker build --tag "$DOCKER_TAG_VALIDATOR" --file docker/validator/Dockerfile .
-docker push "$DOCKER_TAG_VALIDATOR"
+build_and_push "validator" "$DOCKER_TAG_VALIDATOR" "docker/validator/Dockerfile" &
+pids+=($!)
 
-echo "$script_name: all images built and pushed with version $VERSION"
+# Wait for all builds, fail if any fail
+failed=0
+for pid in "${pids[@]}"; do
+    if ! wait "$pid"; then
+        failed=1
+    fi
+done
+
+if [ "$failed" -ne 0 ]; then
+    echo "$script_name: one or more builds failed"
+    exit 1
+fi
+
+echo "$script_name: all images built and pushed with version $VERSION (also tagged as :test)"

@@ -11,3 +11,6 @@ script:
   - "./jenkins-docker-build-and-push.sh"
 
 clean_workspace: true
+
+slack:
+  room: "eduseal-ops"
