@@ -17,3 +17,4 @@ clean_workspace: true
 
 slack:
   room: "eduseal-ops"
+
