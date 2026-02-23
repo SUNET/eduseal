@@ -47,16 +47,17 @@ make release BUMP=major
 
 ## Jenkins Setup
 
-The [.jenkins.yaml](../.jenkins.yaml) in the repo root defines the pipeline. To set it up:
+The [.jenkins.yaml](../.jenkins.yaml) in the repo root defines the pipeline using the standard SUNET JJB format. To set it up:
 
 1. **Create a Multibranch Pipeline** job in Jenkins pointing to this repository.
 2. Under **Branch Sources**, configure:
    - **Discover tags**: Enable tag discovery.
-   - **Filter by name (with regular expression)**: `^(prod-)?v\d+\.\d+\.\d+$`
-3. Under **Build Configuration**, set:
-   - **Script Path**: `.jenkins.yaml`
-4. Optionally configure a **webhook** from your Git hosting to Jenkins so that tag pushes trigger builds immediately.
-
+3. The `.jenkins.yaml` defines three Docker build jobs:
+   - **eduseal-apigw** (main): builds `eduseal/apigw` from `docker/apigw/Dockerfile`
+   - **eduseal-sealer-lunahsm**: builds `eduseal/sealer_lunahsm` from `docker/sealer/lunahsm/Dockerfile`
+   - **eduseal-validator**: builds `eduseal/validator` from `docker/validator/Dockerfile`
+4. The `docker_tag.sh` managed script handles image tagging based on git metadata.
+5. Optionally configure a **webhook** from your Git hosting to Jenkins so that tag pushes trigger builds immediately.
 ## Docker Images Produced
 
 Each release pushes two tags per service: the versioned tag and `testing` (always points to the latest release).

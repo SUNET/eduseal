@@ -1,117 +1,49 @@
 ---
-# Jenkinsfile for eduseal (pipeline-as-yaml)
-# Triggered by tag pushes:
-#   v<major>.<minor>.<patch>        — build + push all services (tagged <version> + testing)
-#   prod-v<major>.<minor>.<patch>   — promote existing images to :prod (no rebuild)
+# .jenkins.yaml for eduseal
+#
+# Builds and pushes Docker images for all services (apigw, sealer, validator).
+# Triggered by tag pushes from `make release`.
+#
+# Images pushed to docker.sunet.se/eduseal/<service>:<tag>
 
-pipeline:
-  agent:
-    any:
+builders:
+  - docker
 
-  environment:
-    DOCKER_REGISTRY: "docker.sunet.se/eduseal"
+docker_name: eduseal/apigw
+docker_dockerfile_dir: docker/apigw
+docker_build_args: "SERVICE_NAME=apigw"
 
-  stages:
-    - stage: "Parse Tag"
-      steps:
-        - script: |
-            env.GIT_TAG = env.TAG_NAME ?: sh(
-                script: 'git describe --tags --exact-match 2>/dev/null || echo ""',
-                returnStdout: true
-            ).trim()
+managed_scripts:
+  - docker_tag.sh
 
-            if (!env.GIT_TAG) {
-                echo "No tag found — skipping."
-                currentBuild.result = 'NOT_BUILT'
-                return
-            }
+triggers:
+  github_push: true
 
-            def prodMatcher = (env.GIT_TAG =~ /^prod-v(\d+\.\d+\.\d+)$/)
-            if (prodMatcher.matches()) {
-                env.PROMOTE = 'true'
-                env.VERSION = "v${prodMatcher[0][1]}"
-                echo "Prod promotion: ${env.VERSION} -> prod"
-                return
-            }
+clean_workspace: true
 
-            def relMatcher = (env.GIT_TAG =~ /^v(\d+\.\d+\.\d+)$/)
-            if (relMatcher.matches()) {
-                env.PROMOTE = 'false'
-                env.VERSION = env.GIT_TAG
-                echo "Release build: ${env.VERSION}"
-                return
-            }
+extra_jobs:
+  - name: eduseal-sealer-lunahsm
+    builders:
+      - docker
+    docker_name: eduseal/sealer_lunahsm
+    docker_dockerfile_dir: docker/sealer/lunahsm
+    managed_scripts:
+      - docker_tag.sh
+    triggers:
+      github_push: false
+      cron: null
+    upstream:
+      - eduseal
 
-            echo "Tag '${env.GIT_TAG}' not recognized — skipping."
-            currentBuild.result = 'NOT_BUILT'
-
-    - stage: "Build Docker Images"
-      when:
-        expression: "env.VERSION != null && env.PROMOTE == 'false'"
-      parallel:
-        - stage: "apigw"
-          steps:
-            - sh: >-
-                docker build
-                --build-arg SERVICE_NAME=apigw
-                --build-arg VERSION=${VERSION}
-                --tag ${DOCKER_REGISTRY}/apigw:${VERSION}
-                --tag ${DOCKER_REGISTRY}/apigw:testing
-                --file docker/worker .
-
-        - stage: "sealer"
-          steps:
-            - sh: >-
-                docker build
-                --tag ${DOCKER_REGISTRY}/sealer_lunahsm:${VERSION}
-                --tag ${DOCKER_REGISTRY}/sealer_lunahsm:testing
-                --file docker/sealer/lunahsm/Dockerfile .
-
-        - stage: "validator"
-          steps:
-            - sh: >-
-                docker build
-                --tag ${DOCKER_REGISTRY}/validator:${VERSION}
-                --tag ${DOCKER_REGISTRY}/validator:testing
-                --file docker/validator/Dockerfile .
-
-    - stage: "Push Docker Images"
-      when:
-        expression: "env.VERSION != null && env.PROMOTE == 'false'"
-      steps:
-        - sh: |
-            docker push ${DOCKER_REGISTRY}/apigw:${VERSION}
-            docker push ${DOCKER_REGISTRY}/apigw:testing
-
-            docker push ${DOCKER_REGISTRY}/sealer_lunahsm:${VERSION}
-            docker push ${DOCKER_REGISTRY}/sealer_lunahsm:testing
-
-            docker push ${DOCKER_REGISTRY}/validator:${VERSION}
-            docker push ${DOCKER_REGISTRY}/validator:testing
-
-    - stage: "Promote to Prod"
-      when:
-        expression: "env.VERSION != null && env.PROMOTE == 'true'"
-      steps:
-        - sh: |
-            for img in apigw sealer_lunahsm validator; do
-                echo "Pulling ${img}:${VERSION}..."
-                docker pull ${DOCKER_REGISTRY}/${img}:${VERSION}
-
-                docker tag ${DOCKER_REGISTRY}/${img}:${VERSION} ${DOCKER_REGISTRY}/${img}:prod
-
-                echo "Pushing ${img}:prod..."
-                docker push ${DOCKER_REGISTRY}/${img}:prod
-                echo ""
-            done
-
-  post:
-    success:
-      - script: |
-          if (env.PROMOTE == 'true') {
-              echo "Promoted ${env.VERSION} to prod successfully."
-          } else {
-              echo "Released all services at ${env.VERSION} successfully."
-          }
-    failure:
-      - echo: "Pipeline failed for ${env.GIT_TAG}!"
+  - name: eduseal-validator
+    builders:
+      - docker
+    docker_name: eduseal/validator
+    docker_dockerfile_dir: docker/validator
+    managed_scripts:
+      - docker_tag.sh
+    triggers:
+      github_push: false
+      cron: null
+    upstream:
+      - eduseal

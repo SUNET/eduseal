@@ -118,7 +118,7 @@ docker-build-softhsm: docker-build-non-pkcs11-containers docker-build-sealer-sof
 
 docker-build-apigw:
 	$(info Docker building apigw with tag: $(VERSION))
-	docker build --build-arg SERVICE_NAME=apigw --build-arg VERSION=$(VERSION) --tag $(DOCKER_TAG_APIGW) --file docker/worker .
+	docker build --build-arg SERVICE_NAME=apigw --build-arg VERSION=$(VERSION) --tag $(DOCKER_TAG_APIGW) --file docker/apigw/Dockerfile .
 
 docker-build-sealer-sectigo:
 	$(info building docker image $(DOCKER_TAG_SEALER_SECTIGO) )
