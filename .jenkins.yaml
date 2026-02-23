@@ -4,6 +4,9 @@
 # Builds and pushes Docker images for all services (apigw, sealer, validator).
 # Images pushed to docker.sunet.se/eduseal/<service>:<tag>
 
+triggers:
+  - github_push
+
 builders:
   - script
 
