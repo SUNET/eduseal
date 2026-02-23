@@ -2,48 +2,12 @@
 # .jenkins.yaml for eduseal
 #
 # Builds and pushes Docker images for all services (apigw, sealer, validator).
-# Triggered by tag pushes from `make release`.
-#
 # Images pushed to docker.sunet.se/eduseal/<service>:<tag>
 
 builders:
-  - docker
+  - script
 
-docker_name: eduseal/apigw
-docker_dockerfile_dir: docker/apigw
-docker_build_args: "SERVICE_NAME=apigw"
-
-managed_scripts:
-  - docker_tag.sh
-
-triggers:
-  github_push: true
+script:
+  - "./jenkins-docker-build-and-push.sh"
 
 clean_workspace: true
-
-extra_jobs:
-  - name: eduseal-sealer-lunahsm
-    builders:
-      - docker
-    docker_name: eduseal/sealer_lunahsm
-    docker_dockerfile_dir: docker/sealer/lunahsm
-    managed_scripts:
-      - docker_tag.sh
-    triggers:
-      github_push: false
-      cron: null
-    upstream:
-      - eduseal
-
-  - name: eduseal-validator
-    builders:
-      - docker
-    docker_name: eduseal/validator
-    docker_dockerfile_dir: docker/validator
-    managed_scripts:
-      - docker_tag.sh
-    triggers:
-      github_push: false
-      cron: null
-    upstream:
-      - eduseal
