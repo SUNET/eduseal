@@ -7,13 +7,6 @@
 triggers:
   - github_push
 
-branches:
-  - "main"
-  - "refs/tags/v*"
-  - "refs/tags/prod-v*"
-
-refspec: "+refs/heads/*:refs/remotes/origin/* +refs/tags/*:refs/remotes/origin/tags/*"
-
 builders:
   - script
 
@@ -24,4 +17,3 @@ clean_workspace: true
 
 slack:
   room: "eduseal-ops"
-
