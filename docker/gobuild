@@ -1,8 +1,10 @@
-# Need to use latest since alpine is built with muscl and protoc is compiled with glibc, so it won't work.
-FROM golang:latest
+# Need glibc-based image since protoc is built with glibc.
+FROM golang:1.25-bookworm
 
 WORKDIR /go/src/app
 
 COPY Makefile .
-RUN make install-tools
+RUN make install-tools \
+	&& go clean -cache -modcache \
+	&& rm -rf /root/.cache/go-build
 

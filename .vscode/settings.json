@@ -71,6 +71,7 @@
         "NEWTAG",
         "nkeys",
         "NOCTOOL",
+        "noninteractive",
         "nosec",
         "nuid",
         "openapi",

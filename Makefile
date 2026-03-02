@@ -105,7 +105,6 @@ release-noctool:
 
 DOCKER_TAG_APIGW 				:= docker.sunet.se/eduseal/apigw:$(VERSION)
 DOCKER_TAG_GOBUILD 				:= docker.sunet.se/eduseal/gobuild:$(VERSION)
-DOCKER_TAG_SEALER_SECTIGO		:= docker.sunet.se/eduseal/sealer_sectigo:$(VERSION)
 DOCKER_TAG_SEALER_SOFTHSM		:= docker.sunet.se/eduseal/sealer_softhsm:$(VERSION)
 DOCKER_TAG_SEALER_LUNAHSM		:= docker.sunet.se/eduseal/sealer_lunahsm:$(VERSION)
 DOCKER_TAG_VALIDATOR			:= docker.sunet.se/eduseal/validator:$(VERSION)
@@ -113,16 +112,12 @@ DOCKER_TAG_VALIDATOR			:= docker.sunet.se/eduseal/validator:$(VERSION)
 
 #### Docker build
 docker-build-non-pkcs11-containers: docker-build-apigw docker-build-validator
-docker-build: docker-build-non-pkcs11-containers docker-build-sealer-lunahsm
+docker-build: docker-build-non-pkcs11-containers docker-build-sealer-lunahsm docker-build-sealer-softhsm
 docker-build-softhsm: docker-build-non-pkcs11-containers docker-build-sealer-softhsm
 
 docker-build-apigw:
 	$(info Docker building apigw with tag: $(VERSION))
 	docker build --build-arg SERVICE_NAME=apigw --build-arg VERSION=$(VERSION) --tag $(DOCKER_TAG_APIGW) --file docker/apigw/Dockerfile .
-
-docker-build-sealer-sectigo:
-	$(info building docker image $(DOCKER_TAG_SEALER_SECTIGO) )
-	docker build --tag $(DOCKER_TAG_SEALER_SECTIGO) --file docker/sealer/sectigo/Dockerfile .
 
 docker-build-sealer-softhsm:
 	$(info building docker image $(DOCKER_TAG_SEALER_SOFTHSM) )
@@ -141,19 +136,21 @@ docker-build-gobuild:
 	docker build --tag $(DOCKER_TAG_GOBUILD) --file docker/gobuild .
 
 #### Docker push
-docker-push: docker-push-apigw docker-push-sealer-lunahsm docker-push-validator
+docker-push: docker-push-apigw docker-push-sealer-lunahsm docker-push-sealer-softhsm docker-push-validator
 	$(info Pushing docker images)
 
 docker-tag-testing:
 	$(info Tagging release images as :testing)
 	docker tag $(DOCKER_TAG_APIGW) $(patsubst %:$(VERSION),%:testing,$(DOCKER_TAG_APIGW))
 	docker tag $(DOCKER_TAG_SEALER_LUNAHSM) $(patsubst %:$(VERSION),%:testing,$(DOCKER_TAG_SEALER_LUNAHSM))
+	docker tag $(DOCKER_TAG_SEALER_SOFTHSM) $(patsubst %:$(VERSION),%:testing,$(DOCKER_TAG_SEALER_SOFTHSM))
 	docker tag $(DOCKER_TAG_VALIDATOR) $(patsubst %:$(VERSION),%:testing,$(DOCKER_TAG_VALIDATOR))
 
 docker-push-testing:
 	$(info Pushing :testing image tags)
 	docker push $(patsubst %:$(VERSION),%:testing,$(DOCKER_TAG_APIGW))
 	docker push $(patsubst %:$(VERSION),%:testing,$(DOCKER_TAG_SEALER_LUNAHSM))
+	docker push $(patsubst %:$(VERSION),%:testing,$(DOCKER_TAG_SEALER_SOFTHSM))
 	docker push $(patsubst %:$(VERSION),%:testing,$(DOCKER_TAG_VALIDATOR))
 
 docker-pull-release:
@@ -189,10 +186,6 @@ docker-push-prod-version:
 docker-push-apigw:
 	$(info Pushing docker images)
 	docker push $(DOCKER_TAG_APIGW)
-
-docker-push-sealer-sectigo:
-	$(info Pushing docker image)
-	docker push $(DOCKER_TAG_SEALER_SECTIGO)
 
 docker-push-sealer-softhsm:
 	$(info Pushing docker image)
@@ -374,7 +367,7 @@ swagger-apigw:
 
 install-tools:
 	$(info Install from apt)
-	apt-get update && apt-get install -y \
+	apt-get update && apt-get install -y --no-install-recommends \
 		protobuf-compiler \
 		netcat-openbsd
 
