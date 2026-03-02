@@ -92,6 +92,9 @@ make release BUMP=major
 make release-prod
 # → Locally pulls :v1.5.1 images, re-tags as :prod and :prod-v1.5.1, pushes
 
+# Re-running for an already-promoted version fails (no re-push)
+# if :prod-v1.5.1 already exists in the registry.
+
 # Promote a specific version to prod
 make release-prod TAG=v1.2.3
 # → Locally pulls :v1.2.3 images, re-tags as :prod and :prod-v1.2.3, pushes

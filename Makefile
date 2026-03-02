@@ -305,6 +305,9 @@ release-prod:
 	fi; \
 	echo "$$SRC_TAG" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$$' || \
 		{ echo "Error: TAG must match vX.Y.Z (got: $$SRC_TAG)"; exit 1; }; \
+	if docker manifest inspect "docker.sunet.se/eduseal/apigw:prod-$$SRC_TAG" >/dev/null 2>&1; then \
+		echo "Error: prod-$$SRC_TAG already exists in registry. Refusing to re-push."; exit 1; \
+	fi; \
 	echo ""; \
 	echo "Promoting $$SRC_TAG -> prod"; \
 	echo ""; \
