@@ -256,7 +256,7 @@ release:
 	echo "==> $$NEW_TAG pushed and published locally."; \
 	echo ""
 
-#### Local release publish (no Jenkins)
+#### Local release publish
 # Builds and pushes apigw, sealer_lunahsm, validator images from a specific tag.
 # Also updates :testing tags to point at that release.
 # Usage:
@@ -347,13 +347,17 @@ proto-sealer-golang:
 proto-validator-golang:
 	protoc --proto_path=./proto/ --go-grpc_opt=module=eduseal --go_opt=module=eduseal --go_out=. --go-grpc_out=. ./proto/v1-validator.proto 
 
-proto-python: proto-sealer-python proto-validator-python
+proto-python: proto-sealer-python proto-validator-python proto-python-fix-imports
 
 proto-sealer-python:
 	python -m grpc_tools.protoc --proto_path=./proto/ --python_out=./src/eduseal/sealer --grpc_python_out=./src/eduseal/sealer ./proto/v1-sealer.proto
 
 proto-validator-python:
 	python -m grpc_tools.protoc --proto_path=./proto/ --python_out=./src/eduseal/validator --grpc_python_out=./src/eduseal/validator ./proto/v1-validator.proto
+
+proto-python-fix-imports:
+	@sed -i "s/^import v1_sealer_pb2 as /import eduseal.sealer.v1_sealer_pb2 as /" ./src/eduseal/sealer/v1_sealer_pb2_grpc.py
+	@sed -i "s/^import v1_validator_pb2 as /import eduseal.validator.v1_validator_pb2 as /" ./src/eduseal/validator/v1_validator_pb2_grpc.py
 
 proto-health-python:
 	python -m grpc_tools.protoc --proto_path=./proto/ --python_out=./src/eduseal/sealer --grpc_python_out=./src/eduseal/sealer ./proto/v1-status.proto
