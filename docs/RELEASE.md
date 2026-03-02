@@ -49,7 +49,11 @@ make release BUMP=major
 
 The [.jenkins.yaml](../.jenkins.yaml) in the repo root defines the pipeline using the SUNET JJB format. The job uses a `script` builder that runs `docker build` and `docker push` for all three services.
 
-The job is triggered by GitHub push events via `github_push`. For a release, the important event is the **tag push** created by `make release`.
+The job is triggered by GitHub push events via `github_push`, with refs explicitly set to:
+
+- `refs/tags/*`
+
+For a release, the important event is the **tag push** created by `make release`.
 
 Images built:
 - `docker.sunet.se/eduseal/apigw` from `docker/apigw/Dockerfile`

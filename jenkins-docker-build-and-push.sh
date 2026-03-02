@@ -12,12 +12,15 @@ set -euo pipefail
 script_name=$(basename "$0")
 
 echo "running SUNET/eduseal/$script_name"
+echo "$script_name: CI context GITHUB_REF='${GITHUB_REF:-}' TAG_NAME='${TAG_NAME:-}' GIT_COMMIT='${GIT_COMMIT:-}'"
 
 # Jenkins environments differ across jobs/plugins; derive commit robustly.
 if [ "${GIT_COMMIT:-}" = "" ]; then
     GIT_COMMIT=$(git rev-parse HEAD)
     echo "$script_name: GIT_COMMIT not set, falling back to HEAD ($GIT_COMMIT)"
 fi
+
+echo "$script_name: resolving release version from refs/tags or commit-pointed tags"
 
 # Prefer explicit tag ref from CI environment for release builds.
 VERSION=""
@@ -30,9 +33,11 @@ else
 fi
 
 if [ "$VERSION" = "" ]; then
-    echo "$script_name: did not find release tag on $GIT_COMMIT, using rev as version"
-    VERSION="$GIT_COMMIT"
+    echo "$script_name: no release tag detected for $GIT_COMMIT, skipping docker build"
+    exit 0
 fi
+
+echo "$script_name: release tag detected, VERSION=$VERSION"
 
 REGISTRY="docker.sunet.se/eduseal"
 
