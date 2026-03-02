@@ -49,9 +49,9 @@ make release BUMP=major
 
 The [.jenkins.yaml](../.jenkins.yaml) in the repo root defines the pipeline using the SUNET JJB format. The job uses a `script` builder that runs `docker build` and `docker push` for all three services.
 
-The job is triggered by GitHub push events via `github_push`, with refs explicitly set to:
+The job is triggered by GitHub push events via `github_push`.
 
-- `refs/tags/*`
+The build script only builds/pushes images when a release tag is detected (`vX.Y.Z` or `prod-vX.Y.Z`), and exits early for non-tag pushes.
 
 For a release, the important event is the **tag push** created by `make release`.
 

@@ -5,10 +5,7 @@
 # Images pushed to docker.sunet.se/eduseal/<service>:<tag>
 
 triggers:
-  - github_push:
-      trigger_on:
-        - refs/tags/*
-        - ^refs/tags/.*$
+  - github_push
 
 builders:
   - script
