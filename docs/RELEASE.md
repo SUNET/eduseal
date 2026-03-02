@@ -2,7 +2,7 @@
 
 ## Overview
 
-All services (**apigw**, **sealer**, **validator**) are always released together under a single shared version tag. A release creates an annotated git tag and pushes it to origin, then images are built and pushed from a trusted local environment using `make local-publish`.
+All services (**apigw**, **sealer**, **validator**) are always released together under a single shared version tag. A release creates an annotated git tag and pushes it to origin, then images are built and pushed from a trusted local environment as part of `make release`.
 
 ### Tag format
 
@@ -26,6 +26,14 @@ make release BUMP=minor
 # Bump major:  v1.0.0 -> v2.0.0
 make release BUMP=major
 ```
+
+### BUMP (Manual)
+
+- `BUMP=patch` → patch increase (default)
+- `BUMP=minor` → minor increase, patch reset to `0`
+- `BUMP=major` → major increase, minor/patch reset to `0`
+
+If `BUMP` is omitted, `make release` uses `patch`.
 
 ## What Happens
 
