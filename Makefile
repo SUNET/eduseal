@@ -369,6 +369,7 @@ install-tools:
 	$(info Install from apt)
 	apt-get update && apt-get install -y --no-install-recommends \
 		protobuf-compiler \
+		libprotobuf-dev \
 		netcat-openbsd
 
 	make clean-apt-cache
