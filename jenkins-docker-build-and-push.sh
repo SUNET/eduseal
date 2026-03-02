@@ -12,7 +12,7 @@ set -euo pipefail
 script_name=$(basename "$0")
 
 echo "running SUNET/eduseal/$script_name"
-echo "$script_name: CI context GITHUB_REF='${GITHUB_REF:-}' TAG_NAME='${TAG_NAME:-}' GIT_COMMIT='${GIT_COMMIT:-}'"
+echo "$script_name: CI context GITHUB_REF='${GITHUB_REF:-}' TAG_NAME='${TAG_NAME:-}' GIT_BRANCH='${GIT_BRANCH:-}' BRANCH_NAME='${BRANCH_NAME:-}' GIT_COMMIT='${GIT_COMMIT:-}'"
 
 # Jenkins environments differ across jobs/plugins; derive commit robustly.
 if [ "${GIT_COMMIT:-}" = "" ]; then
@@ -28,6 +28,12 @@ if [ "${GITHUB_REF:-}" != "" ] && [[ "$GITHUB_REF" == refs/tags/* ]]; then
     VERSION="${GITHUB_REF#refs/tags/}"
 elif [ "${TAG_NAME:-}" != "" ]; then
     VERSION="$TAG_NAME"
+elif [ "${GIT_BRANCH:-}" != "" ] && [[ "$GIT_BRANCH" == refs/tags/* ]]; then
+    VERSION="${GIT_BRANCH#refs/tags/}"
+elif [ "${GIT_BRANCH:-}" != "" ] && [[ "$GIT_BRANCH" == origin/tags/* ]]; then
+    VERSION="${GIT_BRANCH#origin/tags/}"
+elif [ "${BRANCH_NAME:-}" != "" ] && [[ "$BRANCH_NAME" == tags/* ]]; then
+    VERSION="${BRANCH_NAME#tags/}"
 else
     VERSION=$(git tag --points-at "$GIT_COMMIT" | grep -E '^(v[0-9]+\.[0-9]+\.[0-9]+|prod-v[0-9]+\.[0-9]+\.[0-9]+)$' | head -1 || true)
 fi

@@ -8,6 +8,7 @@ triggers:
   - github_push:
       trigger_on:
         - refs/tags/*
+        - ^refs/tags/.*$
 
 builders:
   - script
