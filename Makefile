@@ -1,4 +1,4 @@
-.PHONY : docker-build docker-push docker-tag-testing docker-push-testing docker-pull-release docker-tag-prod docker-push-prod local-publish release release-local release-prod release-noctool PIPCOMPILE
+.PHONY : docker-build docker-push docker-tag-testing docker-push-testing docker-pull-release docker-tag-prod docker-push-prod docker-tag-prod-version docker-push-prod-version local-publish release release-local release-prod release-noctool PIPCOMPILE
 
 NAME 					:= eduseal
 LDFLAGS                 := -ldflags "-w -s --extldflags '-static'"
@@ -174,6 +174,18 @@ docker-push-prod:
 	docker push $(patsubst %:$(VERSION),%:prod,$(DOCKER_TAG_SEALER_LUNAHSM))
 	docker push $(patsubst %:$(VERSION),%:prod,$(DOCKER_TAG_VALIDATOR))
 
+docker-tag-prod-version:
+	$(info Tagging release images as :prod-$(VERSION))
+	docker tag $(DOCKER_TAG_APIGW) $(patsubst %:$(VERSION),%:prod-$(VERSION),$(DOCKER_TAG_APIGW))
+	docker tag $(DOCKER_TAG_SEALER_LUNAHSM) $(patsubst %:$(VERSION),%:prod-$(VERSION),$(DOCKER_TAG_SEALER_LUNAHSM))
+	docker tag $(DOCKER_TAG_VALIDATOR) $(patsubst %:$(VERSION),%:prod-$(VERSION),$(DOCKER_TAG_VALIDATOR))
+
+docker-push-prod-version:
+	$(info Pushing :prod-$(VERSION) image tags)
+	docker push $(patsubst %:$(VERSION),%:prod-$(VERSION),$(DOCKER_TAG_APIGW))
+	docker push $(patsubst %:$(VERSION),%:prod-$(VERSION),$(DOCKER_TAG_SEALER_LUNAHSM))
+	docker push $(patsubst %:$(VERSION),%:prod-$(VERSION),$(DOCKER_TAG_VALIDATOR))
+
 docker-push-apigw:
 	$(info Pushing docker images)
 	docker push $(DOCKER_TAG_APIGW)
@@ -275,8 +287,8 @@ release-local:
 	$(MAKE) local-publish VERSION=$$TAG_CLEAN
 
 #### Prod promotion
-# Promotes a version to prod by pushing a prod-vX.Y.Z git tag,
-# then locally pulling :vX.Y.Z images and re-tagging/pushing as :prod. No rebuild.
+# Promotes a version to prod by locally pulling :vX.Y.Z images
+# and re-tagging/pushing as :prod. No rebuild.
 # Usage:
 #   make release-prod              # promotes latest vX.Y.Z tag to prod
 #   make release-prod TAG=v1.2.3   # promotes v1.2.3 to prod
@@ -293,21 +305,16 @@ release-prod:
 	fi; \
 	echo "$$SRC_TAG" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$$' || \
 		{ echo "Error: TAG must match vX.Y.Z (got: $$SRC_TAG)"; exit 1; }; \
-	PROD_TAG="prod-$$SRC_TAG"; \
-	if git rev-parse "$$PROD_TAG" >/dev/null 2>&1; then \
-		echo "Error: tag $$PROD_TAG already exists"; exit 1; \
-	fi; \
 	echo ""; \
 	echo "Promoting $$SRC_TAG -> prod"; \
 	echo ""; \
-	git tag -a "$$PROD_TAG" -m "Promote $$SRC_TAG to prod"; \
-	git push origin "$$PROD_TAG"; \
-	git ls-remote --exit-code --tags origin "refs/tags/$$PROD_TAG" >/dev/null; \
 	$(MAKE) docker-pull-release VERSION=$$SRC_TAG && \
 	$(MAKE) docker-tag-prod VERSION=$$SRC_TAG && \
-	$(MAKE) docker-push-prod VERSION=$$SRC_TAG; \
+	$(MAKE) docker-tag-prod-version VERSION=$$SRC_TAG && \
+	$(MAKE) docker-push-prod VERSION=$$SRC_TAG && \
+	$(MAKE) docker-push-prod-version VERSION=$$SRC_TAG; \
 	echo ""; \
-	echo "==> $$PROD_TAG pushed. Local prod re-tag/push complete (no rebuild)."; \
+	echo "==> Local prod re-tag/push complete for $$SRC_TAG (:prod and :prod-$$SRC_TAG)."; \
 	echo ""
 
 docker-pull:

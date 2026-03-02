@@ -66,7 +66,9 @@ Images built:
 ## Docker Images Produced
 
 Each release pushes two tags per service: versioned and `testing`.
-Production images use the `prod` tag, promoted separately via `make release-prod`.
+Production images use two tags, promoted separately via `make release-prod`:
+- `prod`
+- `prod-vX.Y.Z`
 
 | Service   | Versioned                                           | Testing                                          | Production                                        |
 | --------- | --------------------------------------------------- | ------------------------------------------------ | ------------------------------------------------- |
@@ -86,15 +88,13 @@ make release
 make release BUMP=major
 # → Detects v1.5.1, creates tag: v2.0.0
 
-# Promote testing to prod (no rebuild — local re-tag/push)
+# Promote latest version to prod (no rebuild — local re-tag/push)
 make release-prod
-# → Pushes git tag: prod-v1.5.1
-# → Locally pulls :v1.5.1 images, re-tags as :prod, pushes
+# → Locally pulls :v1.5.1 images, re-tags as :prod and :prod-v1.5.1, pushes
 
 # Promote a specific version to prod
 make release-prod TAG=v1.2.3
-# → Pushes git tag: prod-v1.2.3
-# → Locally pulls :v1.2.3 images, re-tags as :prod, pushes
+# → Locally pulls :v1.2.3 images, re-tags as :prod and :prod-v1.2.3, pushes
 ```
 
 ## Troubleshooting
