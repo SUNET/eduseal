@@ -1,4 +1,4 @@
-.PHONY : docker-build docker-push release release-prod release-noctool PIPCOMPILE
+.PHONY : docker-build docker-push docker-tag-testing docker-push-testing docker-pull-release docker-tag-prod docker-push-prod local-publish release release-local release-prod release-noctool PIPCOMPILE
 
 NAME 					:= eduseal
 LDFLAGS                 := -ldflags "-w -s --extldflags '-static'"
@@ -144,6 +144,36 @@ docker-build-gobuild:
 docker-push: docker-push-apigw docker-push-sealer-lunahsm docker-push-validator
 	$(info Pushing docker images)
 
+docker-tag-testing:
+	$(info Tagging release images as :testing)
+	docker tag $(DOCKER_TAG_APIGW) $(patsubst %:$(VERSION),%:testing,$(DOCKER_TAG_APIGW))
+	docker tag $(DOCKER_TAG_SEALER_LUNAHSM) $(patsubst %:$(VERSION),%:testing,$(DOCKER_TAG_SEALER_LUNAHSM))
+	docker tag $(DOCKER_TAG_VALIDATOR) $(patsubst %:$(VERSION),%:testing,$(DOCKER_TAG_VALIDATOR))
+
+docker-push-testing:
+	$(info Pushing :testing image tags)
+	docker push $(patsubst %:$(VERSION),%:testing,$(DOCKER_TAG_APIGW))
+	docker push $(patsubst %:$(VERSION),%:testing,$(DOCKER_TAG_SEALER_LUNAHSM))
+	docker push $(patsubst %:$(VERSION),%:testing,$(DOCKER_TAG_VALIDATOR))
+
+docker-pull-release:
+	$(info Pulling release-tagged images)
+	docker pull $(DOCKER_TAG_APIGW)
+	docker pull $(DOCKER_TAG_SEALER_LUNAHSM)
+	docker pull $(DOCKER_TAG_VALIDATOR)
+
+docker-tag-prod:
+	$(info Tagging release images as :prod)
+	docker tag $(DOCKER_TAG_APIGW) $(patsubst %:$(VERSION),%:prod,$(DOCKER_TAG_APIGW))
+	docker tag $(DOCKER_TAG_SEALER_LUNAHSM) $(patsubst %:$(VERSION),%:prod,$(DOCKER_TAG_SEALER_LUNAHSM))
+	docker tag $(DOCKER_TAG_VALIDATOR) $(patsubst %:$(VERSION),%:prod,$(DOCKER_TAG_VALIDATOR))
+
+docker-push-prod:
+	$(info Pushing :prod image tags)
+	docker push $(patsubst %:$(VERSION),%:prod,$(DOCKER_TAG_APIGW))
+	docker push $(patsubst %:$(VERSION),%:prod,$(DOCKER_TAG_SEALER_LUNAHSM))
+	docker push $(patsubst %:$(VERSION),%:prod,$(DOCKER_TAG_VALIDATOR))
+
 docker-push-apigw:
 	$(info Pushing docker images)
 	docker push $(DOCKER_TAG_APIGW)
@@ -207,13 +237,44 @@ release:
 	fi; \
 	git tag -a "$$NEW_TAG" -m "Release $$NEW_TAG (apigw, sealer, validator)"; \
 	git push origin "$$NEW_TAG"; \
+	$(MAKE) local-publish VERSION=$$NEW_TAG; \
 	echo ""; \
-	echo "==> $$NEW_TAG pushed. Jenkins will build apigw, sealer, and validator."; \
+	echo "==> $$NEW_TAG pushed and published locally."; \
 	echo ""
 
+#### Local release publish (no Jenkins)
+# Builds and pushes apigw, sealer_lunahsm, validator images from a specific tag.
+# Also updates :testing tags to point at that release.
+# Usage:
+#   make release-local TAG=v1.2.3
+
+local-publish:
+	@if [ "$(VERSION)" = "latest" ] || [ -z "$(VERSION)" ]; then \
+		echo "Error: VERSION is required (example: make local-publish VERSION=v1.2.3)"; exit 1; \
+	fi
+	@echo ""; \
+	echo "Publishing images from local environment with VERSION=$(VERSION)"; \
+	echo ""; \
+	$(MAKE) docker-build VERSION=$(VERSION) && \
+	$(MAKE) docker-push VERSION=$(VERSION) && \
+	$(MAKE) docker-tag-testing VERSION=$(VERSION) && \
+	$(MAKE) docker-push-testing VERSION=$(VERSION); \
+	echo ""; \
+	echo "==> Local publish complete for VERSION=$(VERSION)"; \
+	echo ""
+
+release-local:
+	@if [ -z "$(TAG)" ]; then \
+		echo "Error: TAG is required (example: make release-local TAG=v1.2.3)"; exit 1; \
+	fi
+	@TAG_CLEAN=$$(echo "$(TAG)" | sed 's#^refs/tags/##'); \
+	echo "$$TAG_CLEAN" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$$' || \
+		{ echo "Error: TAG must match vX.Y.Z (got: $$TAG_CLEAN)"; exit 1; }; \
+	$(MAKE) local-publish VERSION=$$TAG_CLEAN
+
 #### Prod promotion
-# Promotes a version to prod by pushing a prod-vX.Y.Z git tag.
-# Jenkins will pull the existing image, re-tag as :prod, and push. No rebuild.
+# Promotes a version to prod by pushing a prod-vX.Y.Z git tag,
+# then locally pulling :vX.Y.Z images and re-tagging/pushing as :prod. No rebuild.
 # Usage:
 #   make release-prod              # promotes latest vX.Y.Z tag to prod
 #   make release-prod TAG=v1.2.3   # promotes v1.2.3 to prod
@@ -238,8 +299,11 @@ release-prod:
 	echo ""; \
 	git tag -a "$$PROD_TAG" -m "Promote $$SRC_TAG to prod"; \
 	git push origin "$$PROD_TAG"; \
+	$(MAKE) docker-pull-release VERSION=$$SRC_TAG && \
+	$(MAKE) docker-tag-prod VERSION=$$SRC_TAG && \
+	$(MAKE) docker-push-prod VERSION=$$SRC_TAG; \
 	echo ""; \
-	echo "==> $$PROD_TAG pushed. Jenkins will re-tag images as :prod (no rebuild)."; \
+	echo "==> $$PROD_TAG pushed. Local prod re-tag/push complete (no rebuild)."; \
 	echo ""
 
 docker-pull:
