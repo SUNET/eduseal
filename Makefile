@@ -209,7 +209,8 @@ docker-push-gobuild:
 BUMP ?= patch
 
 release:
-	@echo "$(BUMP)" | grep -qE '^(major|minor|patch)$$' || \
+	@set -e; \
+	echo "$(BUMP)" | grep -qE '^(major|minor|patch)$$' || \
 		{ echo "Error: BUMP must be major, minor, or patch (got: $(BUMP))"; exit 1; }
 	@if ! git diff --quiet HEAD 2>/dev/null; then \
 		echo "Error: working tree is dirty — commit or stash changes first"; exit 1; \
@@ -237,6 +238,7 @@ release:
 	fi; \
 	git tag -a "$$NEW_TAG" -m "Release $$NEW_TAG (apigw, sealer, validator)"; \
 	git push origin "$$NEW_TAG"; \
+	git ls-remote --exit-code --tags origin "refs/tags/$$NEW_TAG" >/dev/null; \
 	$(MAKE) local-publish VERSION=$$NEW_TAG; \
 	echo ""; \
 	echo "==> $$NEW_TAG pushed and published locally."; \
@@ -280,8 +282,9 @@ release-local:
 #   make release-prod TAG=v1.2.3   # promotes v1.2.3 to prod
 
 release-prod:
-	@if [ -n "$(TAG)" ]; then \
-		SRC_TAG="$(TAG)"; \
+	@set -e; \
+	if [ -n "$(TAG)" ]; then \
+		SRC_TAG=$$(echo "$(TAG)" | sed 's#^refs/tags/##'); \
 	else \
 		SRC_TAG=$$(git tag -l "v*" --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$$' | head -n1); \
 		if [ -z "$$SRC_TAG" ]; then \
@@ -299,6 +302,7 @@ release-prod:
 	echo ""; \
 	git tag -a "$$PROD_TAG" -m "Promote $$SRC_TAG to prod"; \
 	git push origin "$$PROD_TAG"; \
+	git ls-remote --exit-code --tags origin "refs/tags/$$PROD_TAG" >/dev/null; \
 	$(MAKE) docker-pull-release VERSION=$$SRC_TAG && \
 	$(MAKE) docker-tag-prod VERSION=$$SRC_TAG && \
 	$(MAKE) docker-push-prod VERSION=$$SRC_TAG; \
