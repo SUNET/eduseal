@@ -7,22 +7,31 @@
 # (https://www.shellcheck.net/) before committing.
 #
 
-set -e
+set -euo pipefail
 
 script_name=$(basename "$0")
 
 echo "running SUNET/eduseal/$script_name"
 
-# We expect Jenkins to have set GIT_COMMIT for us.
-if [ "$GIT_COMMIT" = "" ]; then
-    echo "$script_name: GIT_COMMIT is not set, exiting"
-    exit 1
+# Jenkins environments differ across jobs/plugins; derive commit robustly.
+if [ "${GIT_COMMIT:-}" = "" ]; then
+    GIT_COMMIT=$(git rev-parse HEAD)
+    echo "$script_name: GIT_COMMIT not set, falling back to HEAD ($GIT_COMMIT)"
 fi
 
-VERSION=$(git tag --contains "$GIT_COMMIT" | head -1)
+# Prefer explicit tag ref from CI environment for release builds.
+VERSION=""
+if [ "${GITHUB_REF:-}" != "" ] && [[ "$GITHUB_REF" == refs/tags/* ]]; then
+    VERSION="${GITHUB_REF#refs/tags/}"
+elif [ "${TAG_NAME:-}" != "" ]; then
+    VERSION="$TAG_NAME"
+else
+    VERSION=$(git tag --points-at "$GIT_COMMIT" | grep -E '^(v[0-9]+\.[0-9]+\.[0-9]+|prod-v[0-9]+\.[0-9]+\.[0-9]+)$' | head -1 || true)
+fi
+
 if [ "$VERSION" = "" ]; then
-    echo "$script_name: did not find a tag related to revision $GIT_COMMIT, using rev as version"
-    VERSION=$GIT_COMMIT
+    echo "$script_name: did not find release tag on $GIT_COMMIT, using rev as version"
+    VERSION="$GIT_COMMIT"
 fi
 
 REGISTRY="docker.sunet.se/eduseal"
@@ -40,12 +49,12 @@ build_and_push() {
     docker build "${build_args[@]}" --tag "$tag" --file "$dockerfile" .
     docker push "$tag"
 
-    # Also tag and push as :test for rolling test deployments
-    local test_tag="${tag%:*}:test"
-    docker tag "$tag" "$test_tag"
-    docker push "$test_tag"
+    # Also tag and push as :testing for rolling test deployments
+    local testing_tag="${tag%:*}:testing"
+    docker tag "$tag" "$testing_tag"
+    docker push "$testing_tag"
 
-    echo "$script_name: $name done ($tag + $test_tag)"
+    echo "$script_name: $name done ($tag + $testing_tag)"
 }
 
 pids=()
@@ -79,4 +88,4 @@ if [ "$failed" -ne 0 ]; then
     exit 1
 fi
 
-echo "$script_name: all images built and pushed with version $VERSION (also tagged as :test)"
+echo "$script_name: all images built and pushed with version $VERSION (also tagged as :testing)"
