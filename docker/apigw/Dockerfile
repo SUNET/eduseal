@@ -25,7 +25,7 @@ ARG SERVICE_NAME
 
 WORKDIR /
 
-RUN apt-get update && apt-get install -y --no-install-recommends curl procps iputils-ping less netcat-openbsd dnsutils \
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl procps iputils-ping less netcat-openbsd dnsutils \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /go/src/app/bin/eduseal_${SERVICE_NAME} /eduseal_service
