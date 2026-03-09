@@ -3,6 +3,7 @@ FROM docker.sunet.se/eduseal/gobuild:latest AS builder
 
 COPY . .
 ARG SERVICE_NAME
+ARG VERSION
 
 RUN make swagger
 RUN make proto-golang
@@ -13,7 +14,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build GOOS=linux GOARCH=amd64 go b
     -X eduseal/pkg/model.BuildVariableTimestamp=$(date +'%F:T%TZ') \
     -X eduseal/pkg/model.BuildVariableGoVersion=$(go version|awk '{print $3}') \
     -X eduseal/pkg/model.BuildVariableGoArch=$(go version|awk '{print $4}') \
-    -X eduseal/pkg/model.BuildVersion=$(git tag |tail -1) \
+    -X eduseal/pkg/model.BuildVersion=$VERSION \
     -X eduseal/pkg/model.ServiceName=$EDUSEAL_SERVICE_NAME \
     -w -s --extldflags '-static'" ./cmd/$SERVICE_NAME/main.go
 
