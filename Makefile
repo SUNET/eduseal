@@ -1,4 +1,4 @@
-.PHONY : docker-build docker-push docker-tag-testing docker-push-testing docker-pull-release docker-tag-prod docker-push-prod docker-tag-prod-version docker-push-prod-version local-publish release release-local release-prod release-noctool PIPCOMPILE
+.PHONY : docker-build docker-push docker-tag-latest docker-push-latest docker-pull-release docker-tag-prod docker-push-prod docker-tag-prod-version docker-push-prod-version local-publish release release-local release-prod release-noctool PIPCOMPILE
 
 NAME 					:= eduseal
 LDFLAGS                 := -ldflags "-w -s --extldflags '-static'"
@@ -139,19 +139,19 @@ docker-build-gobuild:
 docker-push: docker-push-apigw docker-push-sealer-lunahsm docker-push-sealer-softhsm docker-push-validator
 	$(info Pushing docker images)
 
-docker-tag-testing:
-	$(info Tagging release images as :testing)
-	docker tag $(DOCKER_TAG_APIGW) $(patsubst %:$(VERSION),%:testing,$(DOCKER_TAG_APIGW))
-	docker tag $(DOCKER_TAG_SEALER_LUNAHSM) $(patsubst %:$(VERSION),%:testing,$(DOCKER_TAG_SEALER_LUNAHSM))
-	docker tag $(DOCKER_TAG_SEALER_SOFTHSM) $(patsubst %:$(VERSION),%:testing,$(DOCKER_TAG_SEALER_SOFTHSM))
-	docker tag $(DOCKER_TAG_VALIDATOR) $(patsubst %:$(VERSION),%:testing,$(DOCKER_TAG_VALIDATOR))
+docker-tag-latest:
+	$(info Tagging release images as :latest)
+	docker tag $(DOCKER_TAG_APIGW) $(patsubst %:$(VERSION),%:latest,$(DOCKER_TAG_APIGW))
+	docker tag $(DOCKER_TAG_SEALER_LUNAHSM) $(patsubst %:$(VERSION),%:latest,$(DOCKER_TAG_SEALER_LUNAHSM))
+	docker tag $(DOCKER_TAG_SEALER_SOFTHSM) $(patsubst %:$(VERSION),%:latest,$(DOCKER_TAG_SEALER_SOFTHSM))
+	docker tag $(DOCKER_TAG_VALIDATOR) $(patsubst %:$(VERSION),%:latest,$(DOCKER_TAG_VALIDATOR))
 
-docker-push-testing:
-	$(info Pushing :testing image tags)
-	docker push $(patsubst %:$(VERSION),%:testing,$(DOCKER_TAG_APIGW))
-	docker push $(patsubst %:$(VERSION),%:testing,$(DOCKER_TAG_SEALER_LUNAHSM))
-	docker push $(patsubst %:$(VERSION),%:testing,$(DOCKER_TAG_SEALER_SOFTHSM))
-	docker push $(patsubst %:$(VERSION),%:testing,$(DOCKER_TAG_VALIDATOR))
+docker-push-latest:
+	$(info Pushing :latest image tags)
+	docker push $(patsubst %:$(VERSION),%:latest,$(DOCKER_TAG_APIGW))
+	docker push $(patsubst %:$(VERSION),%:latest,$(DOCKER_TAG_SEALER_LUNAHSM))
+	docker push $(patsubst %:$(VERSION),%:latest,$(DOCKER_TAG_SEALER_SOFTHSM))
+	docker push $(patsubst %:$(VERSION),%:latest,$(DOCKER_TAG_VALIDATOR))
 
 docker-pull-release:
 	$(info Pulling release-tagged images)
@@ -251,7 +251,7 @@ release:
 
 #### Local release publish
 # Builds and pushes apigw, sealer_lunahsm, validator images from a specific tag.
-# Also updates :testing tags to point at that release.
+# Also updates :latest tags to point at that release.
 # Usage:
 #   make release-local TAG=v1.2.3
 
@@ -264,8 +264,8 @@ local-publish:
 	echo ""; \
 	$(MAKE) docker-build VERSION=$(VERSION) && \
 	$(MAKE) docker-push VERSION=$(VERSION) && \
-	$(MAKE) docker-tag-testing VERSION=$(VERSION) && \
-	$(MAKE) docker-push-testing VERSION=$(VERSION); \
+	$(MAKE) docker-tag-latest VERSION=$(VERSION) && \
+	$(MAKE) docker-push-latest VERSION=$(VERSION); \
 	echo ""; \
 	echo "==> Local publish complete for VERSION=$(VERSION)"; \
 	echo ""
