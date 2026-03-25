@@ -63,6 +63,19 @@ sealer_1:
     tls_enabled: true
     private_key_path: "/etc/ssl/private/sealer_1.key"
     certificate_chain_path: "/etc/ssl/private/sealer_1.pem"
+  queue:
+    username: natsadmin
+    password: natspass
+    addr:
+      - nats1:4222
+      - nats2:4222
+      - nats3:4222
+    tls:
+      enabled: true
+      cert_file: /etc/ssl/certs/nats.crt
+      key_file: /etc/ssl/private/nats.key
+      ca_file: /etc/ssl/certs/eduseal_root_CA.crt
+      insecure: false
   pkcs11:
     pin: "1234"
     module: /usr/lib/softhsm/libsofthsm2.so
@@ -83,6 +96,19 @@ sealer_2:
     tls_enabled: true
     private_key_path: "/etc/ssl/private/sealer_2.key"
     certificate_chain_path: "/etc/ssl/private/sealer_2.pem"
+  queue:
+    username: natsadmin
+    password: natspass
+    addr:
+      - nats1:4222
+      - nats2:4222
+      - nats3:4222
+    tls:
+      enabled: true
+      cert_file: /etc/ssl/certs/nats.crt
+      key_file: /etc/ssl/private/nats.key
+      ca_file: /etc/ssl/certs/eduseal_root_CA.crt
+      insecure: false
   pkcs11:
     pin: "1234"
     module: /usr/lib/softhsm/libsofthsm2.so

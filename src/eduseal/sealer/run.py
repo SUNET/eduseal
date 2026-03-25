@@ -298,7 +298,7 @@ class QueueServer(Common):
                 
                 # Add TLS context if configured
                 if tls_context:
-                    connect_opts["tls_context"] = tls_context
+                    connect_opts["tls"] = tls_context
                 
                 await nc.connect(**connect_opts)
                 self.logger.info(f"Connected to NATS at {nc.connected_url.netloc}...")
