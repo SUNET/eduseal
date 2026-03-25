@@ -5,6 +5,7 @@ import base64
 import signal
 import json
 import time
+import ssl
 
 from pkcs11 import Session, UserAlreadyLoggedIn
 from pyhanko.sign.pkcs11 import open_pkcs11_session
@@ -247,20 +248,59 @@ class QueueServer(Common):
         max_retries = self.config.queue_retry.max_retries
         retry_delay = self.config.queue_retry.retry_delay
 
+        # Prepare TLS configuration
+        tls_context = None
+        if self.config.queue.tls and self.config.queue.tls.enabled:
+            self.logger.info("Configuring TLS for NATS")
+            tls_context = ssl.create_default_context()
+            
+            # Load CA certificate
+            if self.config.queue.tls.ca_file:
+                try:
+                    tls_context.load_verify_locations(self.config.queue.tls.ca_file)
+                    self.logger.info(f"Loaded CA certificate from {self.config.queue.tls.ca_file}")
+                except Exception as e:
+                    self.logger.error(f"Failed to load CA certificate: {e}")
+                    raise
+            
+            # Load client certificate and key
+            if self.config.queue.tls.cert_file and self.config.queue.tls.key_file:
+                try:
+                    tls_context.load_cert_chain(
+                        self.config.queue.tls.cert_file,
+                        self.config.queue.tls.key_file
+                    )
+                    self.logger.info(f"Loaded client certificate from {self.config.queue.tls.cert_file}")
+                except Exception as e:
+                    self.logger.error(f"Failed to load client certificate: {e}")
+                    raise
+            
+            # Skip verification if insecure mode is enabled
+            if self.config.queue.tls.insecure:
+                tls_context.check_hostname = False
+                tls_context.verify_mode = ssl.CERT_NONE
+                self.logger.warning("TLS verification disabled for NATS (insecure mode)")
+
         for attempt in range(1, max_retries + 1):
             try:
-                await nc.connect(
-                    servers=self.config.queue.addr,
-                    user=self.config.queue.username,
-                    password=self.config.queue.password,
-                    closed_cb=closed_cb,
-                    allow_reconnect=True,
-                    reconnected_cb=reconnected_cb,
-                    disconnected_cb=disconnected_cb,
-                    error_cb=error_cb,
-                    max_reconnect_attempts=-1,
-                    reconnect_time_wait=5,
-                )
+                connect_opts = {
+                    "servers": self.config.queue.addr,
+                    "user": self.config.queue.username,
+                    "password": self.config.queue.password,
+                    "closed_cb": closed_cb,
+                    "allow_reconnect": True,
+                    "reconnected_cb": reconnected_cb,
+                    "disconnected_cb": disconnected_cb,
+                    "error_cb": error_cb,
+                    "max_reconnect_attempts": -1,
+                    "reconnect_time_wait": 5,
+                }
+                
+                # Add TLS context if configured
+                if tls_context:
+                    connect_opts["tls_context"] = tls_context
+                
+                await nc.connect(**connect_opts)
                 self.logger.info(f"Connected to NATS at {nc.connected_url.netloc}...")
                 open('/tmp/healthcheck', 'w').close()
                 self.logger.info("Healthcheck created (healthy)")

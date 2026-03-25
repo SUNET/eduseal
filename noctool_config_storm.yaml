@@ -1,0 +1,23 @@
+oauth:
+  access_token:
+    - flags:
+        - bearer
+      access:
+        - type: eduseal
+  client:
+    key: masv_test_3
+
+env: test
+testcase: ladok
+save: false
+client_cert: ./client.cert
+client_cert_key: ./client.key
+pdf_size: small  # Options: small, medium, big
+
+storm:
+  enabled: true
+  max_retries: 5
+  retry_wait_ms: 500
+  upload_interval_ms: 2000
+  max_uploads: 10
+  fetch_timeout_sec: 15

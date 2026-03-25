@@ -2,11 +2,14 @@ package stream
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"eduseal/internal/gen/status/v1_status"
 	"eduseal/pkg/kvclient"
 	"eduseal/pkg/logger"
 	"eduseal/pkg/model"
 	"eduseal/pkg/trace"
+	"os"
 	"strings"
 	"time"
 
@@ -85,16 +88,57 @@ func (s *Service) connect(ctx context.Context) error {
 
 	s.log.Info("Connecting to NATS", "servers", servers)
 
-	var err error
-	s.natsClient, err = nats.Connect(
-		servers,
+	connectOpts := []nats.Option{
 		nats.Timeout(2*time.Second),
 		nats.MaxReconnects(100),
 		nats.RetryOnFailedConnect(true),
 		nats.ReconnectWait(2*time.Second),
 		nats.Name("apigw"),
 		nats.UserInfo(s.cfg.Common.Queue.Username, s.cfg.Common.Queue.Password),
-	)
+	}
+
+	// Add TLS configuration if enabled
+	if s.cfg.Common.Queue.TLS.Enabled {
+		s.log.Info("Configuring TLS for NATS", "ca_file", s.cfg.Common.Queue.TLS.CAFile, "cert_file", s.cfg.Common.Queue.TLS.CertFile)
+
+		tlsConfig := &tls.Config{}
+
+		// Load CA certificate
+		if s.cfg.Common.Queue.TLS.CAFile != "" {
+			caCert, err := os.ReadFile(s.cfg.Common.Queue.TLS.CAFile)
+			if err != nil {
+				s.log.Error(err, "Failed to read CA certificate")
+				return err
+			}
+			caCertPool := x509.NewCertPool()
+			if !caCertPool.AppendCertsFromPEM(caCert) {
+				s.log.Error(nil, "Failed to parse CA certificate")
+				return err
+			}
+			tlsConfig.RootCAs = caCertPool
+		}
+
+		// Load client certificate and key
+		if s.cfg.Common.Queue.TLS.CertFile != "" && s.cfg.Common.Queue.TLS.KeyFile != "" {
+			cert, err := tls.LoadX509KeyPair(s.cfg.Common.Queue.TLS.CertFile, s.cfg.Common.Queue.TLS.KeyFile)
+			if err != nil {
+				s.log.Error(err, "Failed to load client certificate")
+				return err
+			}
+			tlsConfig.Certificates = []tls.Certificate{cert}
+		}
+
+		// Skip verification if insecure mode is enabled
+		if s.cfg.Common.Queue.TLS.Insecure {
+			tlsConfig.InsecureSkipVerify = true
+			s.log.Info("TLS verification disabled for NATS (insecure mode)")
+		}
+
+		connectOpts = append(connectOpts, nats.Secure(tlsConfig))
+	}
+
+	var err error
+	s.natsClient, err = nats.Connect(servers, connectOpts...)
 	if err != nil {
 		s.log.Error(err, "Failed to connect to NATS")
 		return err

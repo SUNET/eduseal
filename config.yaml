@@ -25,6 +25,19 @@ common:
       - kv-test-3.eduseal.sunet.se:6380
       - kv-test-3.eduseal.sunet.se:6381
     password: test-password
+  queue:
+    username: natsadmin
+    password: natspass
+    addr:
+      - nats1:4222
+      - nats2:4222
+      - nats3:4222
+    tls:
+      enabled: true
+      cert_file: /etc/ssl/certs/nats.crt
+      key_file: /etc/ssl/private/nats.key
+      ca_file: /etc/ssl/certs/eduseal_root_CA.crt
+      insecure: false
 
 apigw:
   api_server:

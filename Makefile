@@ -1,4 +1,4 @@
-.PHONY : docker-build docker-push docker-tag-latest docker-push-latest docker-pull-release docker-tag-prod docker-push-prod docker-tag-prod-version docker-push-prod-version local-publish release release-local release-prod release-noctool PIPCOMPILE
+.PHONY : docker-build docker-push docker-tag-latest docker-push-latest docker-pull-release docker-tag-prod docker-push-prod docker-tag-prod-version docker-push-prod-version local-publish release release-local release-prod release-noctool run-noctool run-noctool-storm PIPCOMPILE
 
 NAME 					:= eduseal
 LDFLAGS                 := -ldflags "-w -s --extldflags '-static'"
@@ -68,6 +68,14 @@ NOCTOOL_LDFLAGS := -ldflags "-w -s --extldflags '-static' -X main.GitCommit=$(GI
 build-noctool:
 	$(info Building noctool)
 	go build $(NOCTOOL_LDFLAGS) -o bin/noctool ./cmd/noctool
+
+run-noctool: build-noctool
+	$(info Running noctool in one-off mode)
+	./bin/noctool -config noctool_config_default.yaml
+
+run-noctool-storm: build-noctool
+	$(info Running noctool in storm mode)
+	./bin/noctool -config noctool_config_storm.yaml
 
 release-noctool:
 	@echo "$(BUMP)" | grep -qE '^(major|minor|patch)$$' || \
@@ -404,6 +412,7 @@ vscode:
 	go install honnef.co/go/tools/cmd/staticcheck@latest
 	go install golang.org/x/vuln/cmd/govulncheck@latest
 	go install github.com/nats-io/nats-top@latest
+	go install github.com/shurcooL/markdownfmt@latest
 
 	$(info Create python environment)
 	python3 -m venv .venv

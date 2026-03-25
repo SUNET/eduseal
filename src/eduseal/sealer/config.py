@@ -30,6 +30,14 @@ class Queue(BaseModel):
     username: str
     password: str
     addr: List[str]
+    tls: Optional['QueueTLS'] = None
+
+class QueueTLS(BaseModel):
+    enabled: bool = False
+    cert_file: Optional[str] = None
+    key_file: Optional[str] = None
+    ca_file: Optional[str] = None
+    insecure: bool = False  # Skip verification if True
 
 class SealRetry(BaseModel):
     max_retries: int = 3

@@ -19,7 +19,8 @@
 				"Plex.vscode-protolint",
 				"ms-azuretools.vscode-docker",
 				"zenghongtu.vscode-asciiflow2",
-				"ms-python.python"
+				"ms-python.python",
+				"anthropic.claude-code"
 			]
 		}
 	},

@@ -12,6 +12,8 @@ services:
       - ./developer_tools/pki/apigw.crt:/etc/ssl/certs/apigw.crt:ro
       - ./developer_tools/pki/apigw.key:/etc/ssl/private/apigw.key:ro
       - ./developer_tools/pki/apigw.pem:/etc/ssl/private/apigw.pem:ro
+      - ./developer_tools/pki/nats.crt:/etc/ssl/certs/nats.crt:ro
+      - ./developer_tools/pki/nats.key:/etc/ssl/private/nats.key:ro
     depends_on:
       - validator_1
       - validator_2
@@ -43,6 +45,8 @@ services:
       - ./developer_tools/pki/rootCA.crt:/etc/ssl/certs/eduseal_root_CA.crt:ro
       - ./developer_tools/pki/document_sealing_private.der:/opt/sunet/pki/sealing.der:ro
       - ./developer_tools/pki/document_sealing.crt:/opt/sunet/pki/sealing.crt:ro
+      - ./developer_tools/pki/nats.crt:/etc/ssl/certs/nats.crt:ro
+      - ./developer_tools/pki/nats.key:/etc/ssl/private/nats.key:ro
     expose:
       - 50051
     depends_on:
@@ -69,6 +73,8 @@ services:
       - ./developer_tools/pki/rootCA.crt:/etc/ssl/certs/eduseal_root_CA.crt:ro
       - ./developer_tools/pki/document_sealing_private.der:/opt/sunet/pki/sealing.der:ro
       - ./developer_tools/pki/document_sealing.crt:/opt/sunet/pki/sealing.crt:ro
+      - ./developer_tools/pki/nats.crt:/etc/ssl/certs/nats.crt:ro
+      - ./developer_tools/pki/nats.key:/etc/ssl/private/nats.key:ro
     depends_on:
       - nats1
       - nats2
@@ -173,10 +179,16 @@ services:
       - "8222:8222"
     volumes:
       - nats1:/data
+      - ./nats.config:/etc/nats/nats.conf:ro
+      - ./developer_tools/pki/nats.crt:/etc/ssl/certs/nats.crt:ro
+      - ./developer_tools/pki/nats.key:/etc/ssl/private/nats.key:ro
+      - ./developer_tools/pki/rootCA.crt:/etc/ssl/certs/eduseal_root_CA.crt:ro
     networks:
       eduseal-dev-net:
         ipv4_address: 172.20.50.41
     command:
+      - "-c"
+      - "/etc/nats/nats.conf"
       - "--name=nats1"
       - "--cluster_name=c1"
       - "--cluster=nats://nats1:6222"
@@ -193,10 +205,16 @@ services:
       - "8223:8222"
     volumes:
       - nats2:/data
+      - ./nats.config:/etc/nats/nats.conf:ro
+      - ./developer_tools/pki/nats.crt:/etc/ssl/certs/nats.crt:ro
+      - ./developer_tools/pki/nats.key:/etc/ssl/private/nats.key:ro
+      - ./developer_tools/pki/rootCA.crt:/etc/ssl/certs/eduseal_root_CA.crt:ro
     networks:
       eduseal-dev-net:
         ipv4_address: 172.20.50.42
     command:
+      - "-c"
+      - "/etc/nats/nats.conf"
       - "--name=nats2"
       - "--cluster_name=c1"
       - "--cluster=nats://nats2:6222"
@@ -213,10 +231,16 @@ services:
       - "8224:8222"
     volumes:
       - nats3:/data
+      - ./nats.config:/etc/nats/nats.conf:ro
+      - ./developer_tools/pki/nats.crt:/etc/ssl/certs/nats.crt:ro
+      - ./developer_tools/pki/nats.key:/etc/ssl/private/nats.key:ro
+      - ./developer_tools/pki/rootCA.crt:/etc/ssl/certs/eduseal_root_CA.crt:ro
     networks:
       eduseal-dev-net:
         ipv4_address: 172.20.50.43
     command:
+      - "-c"
+      - "/etc/nats/nats.conf"
       - "--name=nats3"
       - "--cluster_name=c1"
       - "--cluster=nats://nats3:6222"

@@ -96,6 +96,16 @@ type Queue struct {
 	Username string   `yaml:"username" validate:"required"`
 	Password string   `yaml:"password" validate:"required"`
 	Addr     []string `yaml:"addr" validate:"required"`
+	TLS      QueueTLS `yaml:"tls" validate:"omitempty"`
+}
+
+// QueueTLS holds the TLS configuration for the queue
+type QueueTLS struct {
+	Enabled    bool   `yaml:"enabled"`
+	CertFile   string `yaml:"cert_file"`
+	KeyFile    string `yaml:"key_file"`
+	CAFile     string `yaml:"ca_file"`
+	Insecure   bool   `yaml:"insecure"` // Skip verification if true
 }
 
 // Cfg is the main configuration structure for this application

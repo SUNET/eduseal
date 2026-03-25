@@ -2,7 +2,7 @@
 
 set -e
 
-service_names="apigw etcd1 etcd2 etcd3 etcd4 etcd5 sealer_1 sealer_2 validator_1 validator_2"
+service_names="apigw etcd1 etcd2 etcd3 etcd4 etcd5 sealer_1 sealer_2 validator_1 validator_2 nats1 nats2 nats3"
 
 pki_dir="pki"
 
