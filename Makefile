@@ -2,9 +2,10 @@
 
 NAME 					:= eduseal
 LDFLAGS                 := -ldflags "-w -s --extldflags '-static'"
-PYTHON					:= $(shell which python)
-PIPCOMPILE				:= pip-compile -v --upgrade --generate-hashes --allow-unsafe --index-url https://pypi.sunet.se/simple
-PIPSYNC					:= pip-sync --index-url https://pypi.sunet.se/simple --python-executable $(PYTHON)
+VENV					:= .venv
+PYTHON					:= $(VENV)/bin/python
+PIPCOMPILE				:= $(VENV)/bin/pip-compile -v --upgrade --generate-hashes --allow-unsafe --index-url https://pypi.sunet.se/simple
+PIPSYNC					:= $(VENV)/bin/pip-sync --index-url https://pypi.sunet.se/simple --python-executable $(PYTHON)
 
 test: test-verifier test-datastore
 
@@ -36,11 +37,16 @@ stop:
 	$(info stopping eduSeal)
 	docker compose -f docker-compose.yaml rm -s -f
 
-sync_py_deps:
+sync_py_deps: $(VENV)
 	$(PIPSYNC) requirements.txt
 
-update_py_deps:
+update_py_deps: $(VENV)
 	$(PIPCOMPILE) requirements.in
+
+$(VENV):
+	$(info Creating Python virtual environment in $(VENV))
+	python3 -m venv $(VENV)
+	$(VENV)/bin/pip install --upgrade pip pip-tools
 
 restart: stop start
 
