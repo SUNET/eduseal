@@ -2,12 +2,15 @@ package kvclient
 
 import (
 	"context"
+	"crypto/tls"
 	"crypto/x509"
 	"eduseal/internal/gen/status/v1_status"
 	"eduseal/pkg/logger"
 	"eduseal/pkg/model"
 	"eduseal/pkg/trace"
+	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -35,7 +38,6 @@ func New(ctx context.Context, cfg *model.Cfg, tracer *trace.Tracer, log *logger.
 		log:        log,
 		probeStore: &v1_status.StatusProbeStore{},
 		tp:         tracer,
-		statusTick: time.NewTicker(time.Second * 10),
 	}
 
 	//clientCert, err := tls.LoadX509KeyPair(cfg.APIGW.ClientCert.CertFilePath, cfg.APIGW.ClientCert.KeyFilePath)
@@ -43,20 +45,44 @@ func New(ctx context.Context, cfg *model.Cfg, tracer *trace.Tracer, log *logger.
 	//	return nil, err
 	//}
 
-	// Load CA cert
-	caCertByte, err := os.ReadFile(cfg.APIGW.ClientCert.RootCAPath)
-	if err != nil {
-		return nil, err
+	clusterOpts := &redis.ClusterOptions{
+		Addrs:    cfg.Common.Redict.Nodes,
+		Password: cfg.Common.Redict.Password,
 	}
-	caCertPool := x509.NewCertPool()
-	caCertPool.AppendCertsFromPEM(caCertByte)
 
-	c.RedictCC = redis.NewClusterClient(
-		&redis.ClusterOptions{
-			Addrs:    cfg.Common.Redict.Nodes,
-			Password: cfg.Common.Redict.Password,
-		},
-	)
+	if cfg.Common.Redict.TLS.Enabled {
+		tlsConfig := &tls.Config{
+			MinVersion: tls.VersionTLS12,
+		}
+
+		if cfg.Common.Redict.TLS.RootCAPath != "" {
+			caCertByte, err := os.ReadFile(filepath.Clean(cfg.Common.Redict.TLS.RootCAPath))
+			if err != nil {
+				return nil, fmt.Errorf("failed to read redict root CA: %w", err)
+			}
+			caCertPool := x509.NewCertPool()
+			if !caCertPool.AppendCertsFromPEM(caCertByte) {
+				return nil, fmt.Errorf("failed to parse redict root CA at %q", cfg.Common.Redict.TLS.RootCAPath)
+			}
+			tlsConfig.RootCAs = caCertPool
+		}
+
+		// Config validation guarantees both are set when TLS is enabled.
+		clientCert, err := tls.LoadX509KeyPair(
+			filepath.Clean(cfg.Common.Redict.TLS.CertFilePath),
+			filepath.Clean(cfg.Common.Redict.TLS.KeyFilePath),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load redict client cert: %w", err)
+		}
+		tlsConfig.Certificates = []tls.Certificate{clientCert}
+
+		clusterOpts.TLSConfig = tlsConfig
+	}
+
+	c.RedictCC = redis.NewClusterClient(clusterOpts)
+
+	c.statusTick = time.NewTicker(time.Second * 10)
 
 	c.probe(ctx)
 
