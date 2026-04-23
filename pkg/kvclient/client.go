@@ -67,16 +67,15 @@ func New(ctx context.Context, cfg *model.Cfg, tracer *trace.Tracer, log *logger.
 			tlsConfig.RootCAs = caCertPool
 		}
 
-		if cfg.Common.Redict.TLS.CertFilePath != "" && cfg.Common.Redict.TLS.KeyFilePath != "" {
-			clientCert, err := tls.LoadX509KeyPair(
-				filepath.Clean(cfg.Common.Redict.TLS.CertFilePath),
-				filepath.Clean(cfg.Common.Redict.TLS.KeyFilePath),
-			)
-			if err != nil {
-				return nil, fmt.Errorf("failed to load redict client cert: %w", err)
-			}
-			tlsConfig.Certificates = []tls.Certificate{clientCert}
+		// Config validation guarantees both are set when TLS is enabled.
+		clientCert, err := tls.LoadX509KeyPair(
+			filepath.Clean(cfg.Common.Redict.TLS.CertFilePath),
+			filepath.Clean(cfg.Common.Redict.TLS.KeyFilePath),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load redict client cert: %w", err)
 		}
+		tlsConfig.Certificates = []tls.Certificate{clientCert}
 
 		clusterOpts.TLSConfig = tlsConfig
 	}
