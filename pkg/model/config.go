@@ -14,12 +14,16 @@ type JWTAuth struct {
 	JWKURL  string            `yaml:"jwk_url"`
 }
 
-// TLS holds the tls configuration
+// TLS holds the tls configuration.
+//
+// When Enabled is true, CertFilePath and KeyFilePath are required.
+// RootCAPath is optional and only used when verifying a peer against a
+// custom CA (client TLS / mTLS).
 type TLS struct {
 	Enabled      bool   `yaml:"enabled"`
 	CertFilePath string `yaml:"cert_file_path" validate:"required_if=Enabled true"`
 	KeyFilePath  string `yaml:"key_file_path" validate:"required_if=Enabled true"`
-	RootCAPath   string `yaml:"root_ca_path" validate:"required_if=Enabled true"`
+	RootCAPath   string `yaml:"root_ca_path"`
 }
 
 // Mongo holds the database configuration

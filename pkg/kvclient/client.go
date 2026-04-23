@@ -38,7 +38,6 @@ func New(ctx context.Context, cfg *model.Cfg, tracer *trace.Tracer, log *logger.
 		log:        log,
 		probeStore: &v1_status.StatusProbeStore{},
 		tp:         tracer,
-		statusTick: time.NewTicker(time.Second * 10),
 	}
 
 	//clientCert, err := tls.LoadX509KeyPair(cfg.APIGW.ClientCert.CertFilePath, cfg.APIGW.ClientCert.KeyFilePath)
@@ -83,6 +82,8 @@ func New(ctx context.Context, cfg *model.Cfg, tracer *trace.Tracer, log *logger.
 	}
 
 	c.RedictCC = redis.NewClusterClient(clusterOpts)
+
+	c.statusTick = time.NewTicker(time.Second * 10)
 
 	c.probe(ctx)
 
