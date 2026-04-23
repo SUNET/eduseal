@@ -17,9 +17,9 @@ type JWTAuth struct {
 // TLS holds the tls configuration
 type TLS struct {
 	Enabled      bool   `yaml:"enabled"`
-	CertFilePath string `yaml:"cert_file_path"`
-	KeyFilePath  string `yaml:"key_file_path"`
-	RootCAPath   string `yaml:"root_ca_path"`
+	CertFilePath string `yaml:"cert_file_path" validate:"required_if=Enabled true"`
+	KeyFilePath  string `yaml:"key_file_path" validate:"required_if=Enabled true"`
+	RootCAPath   string `yaml:"root_ca_path" validate:"required_if=Enabled true"`
 }
 
 // Mongo holds the database configuration
@@ -53,6 +53,7 @@ type Common struct {
 type Redict struct {
 	Nodes    []string `yaml:"nodes" validate:"required"`
 	Password string   `yaml:"password" validate:"required"`
+	TLS      TLS      `yaml:"tls" validate:"omitempty"`
 }
 
 // SMT Spares Merkel Tree configuration
