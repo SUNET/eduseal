@@ -2,11 +2,16 @@ package stream
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"eduseal/internal/gen/status/v1_status"
 	"eduseal/pkg/kvclient"
 	"eduseal/pkg/logger"
 	"eduseal/pkg/model"
 	"eduseal/pkg/trace"
+	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -85,16 +90,46 @@ func (s *Service) connect(ctx context.Context) error {
 
 	s.log.Info("Connecting to NATS", "servers", servers)
 
-	var err error
-	s.natsClient, err = nats.Connect(
-		servers,
-		nats.Timeout(2*time.Second),
+	opts := []nats.Option{
+		nats.Timeout(2 * time.Second),
 		nats.MaxReconnects(100),
 		nats.RetryOnFailedConnect(true),
-		nats.ReconnectWait(2*time.Second),
+		nats.ReconnectWait(2 * time.Second),
 		nats.Name("apigw"),
 		nats.UserInfo(s.cfg.Common.Queue.Username, s.cfg.Common.Queue.Password),
-	)
+	}
+
+	if s.cfg.Common.Queue.TLS.Enabled {
+		tlsConfig := &tls.Config{
+			MinVersion: tls.VersionTLS12,
+		}
+
+		if s.cfg.Common.Queue.TLS.RootCAPath != "" {
+			caCertByte, err := os.ReadFile(filepath.Clean(s.cfg.Common.Queue.TLS.RootCAPath))
+			if err != nil {
+				return fmt.Errorf("failed to read queue root CA: %w", err)
+			}
+			caCertPool := x509.NewCertPool()
+			if !caCertPool.AppendCertsFromPEM(caCertByte) {
+				return fmt.Errorf("failed to parse queue root CA at %q", s.cfg.Common.Queue.TLS.RootCAPath)
+			}
+			tlsConfig.RootCAs = caCertPool
+		}
+
+		clientCert, err := tls.LoadX509KeyPair(
+			filepath.Clean(s.cfg.Common.Queue.TLS.CertFilePath),
+			filepath.Clean(s.cfg.Common.Queue.TLS.KeyFilePath),
+		)
+		if err != nil {
+			return fmt.Errorf("failed to load queue client cert: %w", err)
+		}
+		tlsConfig.Certificates = []tls.Certificate{clientCert}
+
+		opts = append(opts, nats.Secure(tlsConfig))
+	}
+
+	var err error
+	s.natsClient, err = nats.Connect(servers, opts...)
 	if err != nil {
 		s.log.Error(err, "Failed to connect to NATS")
 		return err

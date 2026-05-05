@@ -26,10 +26,17 @@ class GRPCServer(BaseModel):
     private_key_path: Optional[str] = None
     certificate_chain_path: Optional[str] = None
 
+class QueueTLS(BaseModel):
+    enabled: bool = False
+    cert_file_path: Optional[str] = None
+    key_file_path: Optional[str] = None
+    root_ca_path: Optional[str] = None
+
 class Queue(BaseModel):
     username: str
     password: str
     addr: List[str]
+    tls: QueueTLS = QueueTLS()
 
 class SealRetry(BaseModel):
     max_retries: int = 3

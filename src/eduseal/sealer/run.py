@@ -3,6 +3,7 @@ from io import BytesIO
 import os
 import base64
 import signal
+import ssl
 import json
 import time
 
@@ -247,9 +248,20 @@ class QueueServer(Common):
         max_retries = self.config.queue_retry.max_retries
         retry_delay = self.config.queue_retry.retry_delay
 
+        tls_context = None
+        if self.config.queue.tls.enabled:
+            tls_context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH)
+            if self.config.queue.tls.root_ca_path:
+                tls_context.load_verify_locations(self.config.queue.tls.root_ca_path)
+            if self.config.queue.tls.cert_file_path and self.config.queue.tls.key_file_path:
+                tls_context.load_cert_chain(
+                    certfile=self.config.queue.tls.cert_file_path,
+                    keyfile=self.config.queue.tls.key_file_path,
+                )
+
         for attempt in range(1, max_retries + 1):
             try:
-                await nc.connect(
+                connect_kwargs = dict(
                     servers=self.config.queue.addr,
                     user=self.config.queue.username,
                     password=self.config.queue.password,
@@ -261,6 +273,10 @@ class QueueServer(Common):
                     max_reconnect_attempts=-1,
                     reconnect_time_wait=5,
                 )
+                if tls_context is not None:
+                    connect_kwargs["tls"] = tls_context
+
+                await nc.connect(**connect_kwargs)
                 self.logger.info(f"Connected to NATS at {nc.connected_url.netloc}...")
                 open('/tmp/healthcheck', 'w').close()
                 self.logger.info("Healthcheck created (healthy)")
