@@ -102,6 +102,7 @@ func (s *Service) connect(ctx context.Context) error {
 	if s.cfg.Common.Queue.TLS.Enabled {
 		tlsConfig := &tls.Config{
 			MinVersion: tls.VersionTLS12,
+			ServerName: s.cfg.Common.Queue.TLS.ServerName,
 		}
 
 		if s.cfg.Common.Queue.TLS.RootCAPath != "" {

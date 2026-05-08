@@ -275,6 +275,8 @@ class QueueServer(Common):
                 )
                 if tls_context is not None:
                     connect_kwargs["tls"] = tls_context
+                    if self.config.queue.tls.server_name:
+                        connect_kwargs["tls_hostname"] = self.config.queue.tls.server_name
 
                 await nc.connect(**connect_kwargs)
                 self.logger.info(f"Connected to NATS at {nc.connected_url.netloc}...")

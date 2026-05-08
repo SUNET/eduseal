@@ -31,6 +31,7 @@ class QueueTLS(BaseModel):
     cert_file_path: Optional[str] = None
     key_file_path: Optional[str] = None
     root_ca_path: Optional[str] = None
+    server_name: Optional[str] = None
 
 class Queue(BaseModel):
     username: str

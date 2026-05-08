@@ -53,6 +53,7 @@ func New(ctx context.Context, cfg *model.Cfg, tracer *trace.Tracer, log *logger.
 	if cfg.Common.Redict.TLS.Enabled {
 		tlsConfig := &tls.Config{
 			MinVersion: tls.VersionTLS12,
+			ServerName: cfg.Common.Redict.TLS.ServerName,
 		}
 
 		if cfg.Common.Redict.TLS.RootCAPath != "" {
