@@ -205,6 +205,9 @@ func main() {
 	case "test":
 		client.serviceBaseURL = "https://test-api.eduseal.sunet.se"
 		client.accessTransactionURL = "https://auth-test.sunet.se/transaction"
+	case "qa":
+		client.serviceBaseURL = "https://qa-api.eduseal.sunet.se"
+		client.accessTransactionURL = "https://auth-test.sunet.se/transaction"
 	case "prod":
 		client.serviceBaseURL = "https://api.eduseal.sunet.se"
 		client.accessTransactionURL = "https://auth.sunet.se/transaction"
