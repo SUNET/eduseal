@@ -1,0 +1,15 @@
+# Storm mode — continuous stress testing
+env: test
+testcase: ladok
+save: false
+client_cert: ./client.cert
+client_cert_key: ./client.key
+pdf_size: medium
+
+storm:
+  enabled: true
+  max_retries: 5
+  retry_wait_ms: 500
+  upload_interval_ms: 2000
+  max_uploads: 50              # Set to 0 for unlimited (Ctrl+C to stop)
+  fetch_timeout_sec: 15

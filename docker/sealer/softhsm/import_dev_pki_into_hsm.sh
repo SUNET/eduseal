@@ -2,18 +2,21 @@
 
 printf "import PKI\n"
 
-set -e 
+set -e
 
 pki_folder="/opt/sunet/pki"
 if [[ ! -d  ${pki_folder} ]]; then
     mkdir -p ${pki_folder}
 fi
 
-pkcs11_pin="1234"
-pkcs11_module="/usr/lib/softhsm/libsofthsm2.so"
-pkcs11_label="test_label"
-pkcs11_key_label="test_key_label"
-pkcs11_cert_label="test_cert_label"
+# Read PKCS#11 settings from environment variables.
+: "${pkcs11_pin:?ERROR: pkcs11_pin not set}"
+: "${pkcs11_module:?ERROR: pkcs11_module not set}"
+: "${pkcs11_label:?ERROR: pkcs11_label not set}"
+: "${pkcs11_key_label:?ERROR: pkcs11_key_label not set}"
+: "${pkcs11_cert_label:?ERROR: pkcs11_cert_label not set}"
+
+printf "PKCS#11 config: module=%s label=%s\n" "${pkcs11_module}" "${pkcs11_label}"
 
 clean_hsm() {
     printf "clean hsm\n"

@@ -19,6 +19,7 @@ import (
 )
 
 var (
+	Version   = "unknown"
 	GitCommit = "unknown"
 	BuildDate = "unknown"
 )
@@ -47,22 +48,23 @@ type validationResponse struct {
 	} `json:"data"`
 }
 
-type oauthConfig struct {
-	AccessToken []oauthAccessToken `json:"access_token" yaml:"access_token"`
-	Client      oauthClient        `json:"client" yaml:"client"`
+// authRequestBody is the new mTLS-based auth request
+type authRequestBody struct {
+	AccessToken []authAccessToken `json:"access_token"`
+	Client      authClient        `json:"client"`
 }
 
-type oauthAccessToken struct {
-	Flags  []string      `json:"flags" yaml:"flags"`
-	Access []oauthAccess `json:"access" yaml:"access"`
+type authAccessToken struct {
+	Flags []string `json:"flags"`
 }
 
-type oauthAccess struct {
-	Type string `json:"type" yaml:"type"`
+type authClient struct {
+	Key authClientKey `json:"key"`
 }
 
-type oauthClient struct {
-	Key string `json:"key" yaml:"key"`
+type authClientKey struct {
+	Proof string `json:"proof"`
+	Cert  string `json:"cert"`
 }
 
 type StormMode struct {
@@ -75,14 +77,14 @@ type StormMode struct {
 }
 
 type Config struct {
-	OAuth         oauthConfig `json:"oauth" yaml:"oauth"`
-	Env           string      `json:"env,omitempty" yaml:"env,omitempty"`
-	TestCase      string      `json:"testcase,omitempty" yaml:"testcase,omitempty"`
-	Save          bool        `json:"save,omitempty" yaml:"save,omitempty"`
-	ClientCert    string      `json:"client_cert,omitempty" yaml:"client_cert,omitempty"`
-	ClientCertKey string      `json:"client_cert_key,omitempty" yaml:"client_cert_key,omitempty"`
-	PDFSize       string      `json:"pdf_size,omitempty" yaml:"pdf_size,omitempty"`
-	Storm         StormMode   `json:"storm,omitempty" yaml:"storm,omitempty"`
+	OAuth         map[string]any `json:"oauth,omitempty" yaml:"oauth,omitempty"`
+	Env           string         `json:"env,omitempty" yaml:"env,omitempty"`
+	TestCase      string         `json:"testcase,omitempty" yaml:"testcase,omitempty"`
+	Save          bool           `json:"save,omitempty" yaml:"save,omitempty"`
+	ClientCert    string         `json:"client_cert,omitempty" yaml:"client_cert,omitempty"`
+	ClientCertKey string         `json:"client_cert_key,omitempty" yaml:"client_cert_key,omitempty"`
+	PDFSize       string         `json:"pdf_size,omitempty" yaml:"pdf_size,omitempty"`
+	Storm         StormMode      `json:"storm,omitempty" yaml:"storm,omitempty"`
 }
 
 type fetchResponse struct {
@@ -118,6 +120,7 @@ type Client struct {
 	transactionID        string
 	validationResponse   validationResponse
 	config               Config
+	clientCertPEM        string
 	stats                stormStats
 	errorLogFile         *os.File
 }
@@ -128,7 +131,7 @@ func main() {
 	flag.Parse()
 
 	if *versionFlag {
-		fmt.Printf("noctool git:%s built:%s\n", GitCommit, BuildDate)
+		fmt.Printf("%s git:%s built:%s\n", Version, GitCommit, BuildDate)
 		os.Exit(0)
 	}
 
@@ -152,6 +155,14 @@ func main() {
 		fmt.Printf("\033[31m✗\033[0m could not load client key pair: %v\n", err)
 		os.Exit(1)
 	}
+
+	// Read the client certificate PEM for the auth request body
+	certPEMBytes, err := os.ReadFile(filepath.Clean(config.ClientCert))
+	if err != nil {
+		fmt.Printf("\033[31m✗\033[0m could not read client certificate file: %v\n", err)
+		os.Exit(1)
+	}
+	clientCertPEM := string(certPEMBytes)
 
 	// Parse and display client certificate details
 	if len(clientCert.Certificate) > 0 {
@@ -199,6 +210,7 @@ func main() {
 		testCase:           config.TestCase,
 		validationResponse: validationResponse{},
 		config:             config,
+		clientCertPEM:      clientCertPEM,
 	}
 
 	switch client.env {
@@ -275,7 +287,25 @@ func loadAccessRequestBody(configPath string) (Config, error) {
 }
 
 func (c *Client) getAccessToken() error {
-	requestBody, err := json.Marshal(c.config.OAuth)
+	var requestBody []byte
+	var err error
+
+	if c.config.OAuth != nil {
+		requestBody, err = json.Marshal(c.config.OAuth)
+	} else {
+		body := authRequestBody{
+			AccessToken: []authAccessToken{
+				{Flags: []string{"bearer"}},
+			},
+			Client: authClient{
+				Key: authClientKey{
+					Proof: "mtls",
+					Cert:  c.clientCertPEM,
+				},
+			},
+		}
+		requestBody, err = json.Marshal(body)
+	}
 	if err != nil {
 		return err
 	}
@@ -318,7 +348,7 @@ func (c *Client) getAccessToken() error {
 	// Extract expires_in to determine when to refresh the token
 	if expiresIn, ok := accessToken["expires_in"].(float64); ok {
 		c.tokenExpiresAt = time.Now().Add(time.Duration(expiresIn) * time.Second)
-		fmt.Printf("\033[32m✓\033[0m Access token valid for %.0f seconds (expires at %s)\n", 
+		fmt.Printf("\033[32m✓\033[0m Access token valid for %.0f seconds (expires at %s)\n",
 			expiresIn, c.tokenExpiresAt.Format("15:04:05"))
 	} else {
 		// Default to 1 hour if expires_in not provided
@@ -743,11 +773,11 @@ func (c *Client) logFetchAttemptsExhausted(uploadNum int, maxRetries int, lastEr
 	timestamp := time.Now().Format("2006-01-02 15:04:05")
 	logEntry := fmt.Sprintf("[%s] 🔄 FETCH ATTEMPTS EXHAUSTED | Upload #%d | TransactionID: %s | Retries: %d | Last Error: %v\n",
 		timestamp, uploadNum, c.transactionID, maxRetries, lastErr)
-	
+
 	if _, writeErr := c.errorLogFile.WriteString(logEntry); writeErr != nil {
 		fmt.Printf("  \033[33m⚠\033[0m Failed to write to error log: %v\n", writeErr)
 	}
-	
+
 	// Also print to console
 	fmt.Printf("  \033[31m🔄\033[0m All %d fetch attempts exhausted for TransactionID: %s\n", maxRetries, c.transactionID)
 }
@@ -757,7 +787,7 @@ func (c *Client) tokenRefreshWorker(stopChan chan bool) {
 		// Calculate time until token expires with a 2-minute safety buffer
 		timeUntilExpiry := time.Until(c.tokenExpiresAt)
 		refreshTime := timeUntilExpiry - (2 * time.Minute)
-		
+
 		// If token is already expired or will expire very soon, refresh immediately
 		if refreshTime <= 0 {
 			refreshTime = 1 * time.Second
@@ -765,9 +795,9 @@ func (c *Client) tokenRefreshWorker(stopChan chan bool) {
 
 		select {
 		case <-time.After(refreshTime):
-			fmt.Printf("\n\033[33m🔄 Refreshing JWT token (expires at %s)...\033[0m\n", 
+			fmt.Printf("\n\033[33m🔄 Refreshing JWT token (expires at %s)...\033[0m\n",
 				c.tokenExpiresAt.Format("15:04:05"))
-			
+
 			if err := c.getAccessToken(); err != nil {
 				fmt.Printf("\033[31m✗ Token refresh failed: %v\033[0m\n", err)
 				fmt.Printf("\033[33m⚠ Will retry in 30 seconds...\033[0m\n")
@@ -776,7 +806,7 @@ func (c *Client) tokenRefreshWorker(stopChan chan bool) {
 			} else {
 				fmt.Printf("\033[32m✓ JWT token refreshed successfully\033[0m\n")
 			}
-			
+
 		case <-stopChan:
 			fmt.Println("\033[33mStopping token refresh worker\033[0m")
 			return

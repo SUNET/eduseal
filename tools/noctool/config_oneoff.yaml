@@ -1,0 +1,7 @@
+# Single seal-and-validate cycle (one-off test)
+env: test
+testcase: ladok
+save: true
+client_cert: ./client.cert
+client_cert_key: ./client.key
+pdf_size: small

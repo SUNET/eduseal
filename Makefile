@@ -1,4 +1,4 @@
-.PHONY : docker-build docker-push docker-tag-latest docker-push-latest docker-pull-release docker-tag-prod docker-push-prod docker-tag-prod-version docker-push-prod-version local-publish release release-local release-prod release-noctool PIPCOMPILE
+.PHONY : docker-build docker-push docker-tag-latest docker-push-latest docker-pull-release docker-tag-prod docker-push-prod docker-tag-prod-version docker-push-prod-version local-publish release release-local release-prod release-noctool release-noctool-dirty PIPCOMPILE
 
 NAME 					:= eduseal
 LDFLAGS                 := -ldflags "-w -s --extldflags '-static'"
@@ -69,17 +69,18 @@ endif
 
 GIT_COMMIT := $(shell git rev-parse --short HEAD)
 BUILD_DATE := $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
-NOCTOOL_LDFLAGS := -ldflags "-w -s --extldflags '-static' -X main.GitCommit=$(GIT_COMMIT) -X main.BuildDate=$(BUILD_DATE)"
+NOCTOOL_VERSION := $(shell git describe --tags --match 'noctool-v*' --always 2>/dev/null || echo "noctool-vdev")
+NOCTOOL_LDFLAGS := -ldflags "-w -s --extldflags '-static' -X main.Version=$(NOCTOOL_VERSION) -X main.GitCommit=$(GIT_COMMIT) -X main.BuildDate=$(BUILD_DATE)"
 
 build-noctool:
 	$(info Building noctool)
-	go build $(NOCTOOL_LDFLAGS) -o bin/noctool ./cmd/noctool
+	go build $(NOCTOOL_LDFLAGS) -o bin/noctool ./tools/noctool
 
 release-noctool:
 	@echo "$(BUMP)" | grep -qE '^(major|minor|patch)$$' || \
 		{ echo "Error: BUMP must be major, minor, or patch (got: $(BUMP))"; exit 1; }
-	@if ! git diff --quiet HEAD 2>/dev/null; then \
-		echo "Error: working tree is dirty — commit or stash changes first"; exit 1; \
+	@if [ "$(FORCE)" != "1" ] && ! git diff --quiet HEAD 2>/dev/null; then \
+		echo "Error: working tree is dirty — commit or stash changes first (use FORCE=1 to override)"; exit 1; \
 	fi
 	@LATEST=$$(git tag -l "noctool-v*" --sort=-v:refname | grep -E '^noctool-v[0-9]+\.[0-9]+\.[0-9]+$$' | head -n1); \
 	if [ -z "$$LATEST" ]; then \
@@ -223,8 +224,8 @@ release:
 	@set -e; \
 	echo "$(BUMP)" | grep -qE '^(major|minor|patch)$$' || \
 		{ echo "Error: BUMP must be major, minor, or patch (got: $(BUMP))"; exit 1; }
-	@if ! git diff --quiet HEAD 2>/dev/null; then \
-		echo "Error: working tree is dirty — commit or stash changes first"; exit 1; \
+	@if [ "$(FORCE)" != "1" ] && ! git diff --quiet HEAD 2>/dev/null; then \
+		echo "Error: working tree is dirty — commit or stash changes first (use FORCE=1 to override)"; exit 1; \
 	fi
 	@LATEST=$$(git tag -l "v*" --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$$' | head -n1); \
 	if [ -z "$$LATEST" ]; then \
@@ -328,9 +329,9 @@ docker-archive:
 	docker save --output docker_archives/eduseal_$(VERSION).tar $(DOCKER_TAG_VERIFIER) $(DOCKER_TAG_DATASTORE) $(DOCKER_TAG_REGISTRY)
 
 
-clean_redis:
-	$(info Cleaning redis volume)
-	docker volume rm eduseal_redis_data 
+clean_valkey:
+	$(info Cleaning valkey volume)
+	docker volume rm eduseal_valkey_data 
 
 ci_build: docker-build docker-push
 	$(info CI Build)

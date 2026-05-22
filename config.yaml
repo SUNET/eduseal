@@ -12,9 +12,9 @@ common:
     - validator_2:50051
   validator_service_name: validator.eduseal.docker
   root_ca_path: /etc/ssl/certs/eduseal_root_CA.crt
-  redict:
+  kv:
+    type: valkey
     nodes:
-     # - redis:6379
       - kv-test-1.eduseal.sunet.se:6379
       - kv-test-1.eduseal.sunet.se:6380
       - kv-test-1.eduseal.sunet.se:6381
