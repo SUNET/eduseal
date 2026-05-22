@@ -1,4 +1,4 @@
-.PHONY : docker-build docker-push docker-tag-latest docker-push-latest docker-pull-release docker-tag-prod docker-push-prod docker-tag-prod-version docker-push-prod-version local-publish release release-local release-prod release-noctool release-noctool-dirty PIPCOMPILE
+.PHONY : docker-build docker-push docker-tag-latest docker-push-latest docker-pull-release docker-tag-prod docker-push-prod docker-tag-prod-version docker-push-prod-version local-publish release release-local release-prod release-noctool release-noctool-dirty PIPCOMPILE update update_go_deps update_py_deps
 
 NAME 					:= eduseal
 LDFLAGS                 := -ldflags "-w -s --extldflags '-static'"
@@ -36,6 +36,14 @@ start:
 stop:
 	$(info stopping eduSeal)
 	docker compose -f docker-compose.yaml rm -s -f
+
+update: update_go_deps update_py_deps
+
+update_go_deps:
+	$(info Updating Go dependencies)
+	go get -u ./...
+	go mod tidy
+	go mod vendor
 
 sync_py_deps: $(VENV)
 	$(PIPSYNC) requirements.txt
