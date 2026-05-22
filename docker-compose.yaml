@@ -123,38 +123,38 @@ services:
       - "EDUSEAL_SERVICE_NAME=validator_2"
       - "EDUSEAL_CONFIG_NAMESPACE=validator_2"
 
-  redis-node-0:
-    container_name: "eduseal_dev_redis-node-0"
-    image: docker.io/bitnami/redis-cluster:7.2
+  valkey-node-0:
+    container_name: "eduseal_dev_valkey-node-0"
+    image: docker.io/bitnami/valkey-cluster:8.1
     volumes:
-      - redis-cluster_data-0:/bitnami/redis/data
+      - valkey-cluster_data-0:/bitnami/redis/data
     networks:
       eduseal-dev-net:
         ipv4_address: 172.20.50.30
     environment:
       - 'REDIS_PASSWORD=test-password'
-      - 'REDIS_NODES=redis-node-0 redis-node-1 redis-node-2'
+      - 'REDIS_NODES=valkey-node-0 valkey-node-1 valkey-node-2'
 
-  redis-node-1:
-    container_name: "eduseal_dev_redis-node-1"
-    image: docker.io/bitnami/redis-cluster:7.2
+  valkey-node-1:
+    container_name: "eduseal_dev_valkey-node-1"
+    image: docker.io/bitnami/valkey-cluster:8.1
     volumes:
-      - redis-cluster_data-1:/bitnami/redis/data
+      - valkey-cluster_data-1:/bitnami/redis/data
     networks:
       eduseal-dev-net:
         ipv4_address: 172.20.50.31
     environment:
       - 'REDIS_PASSWORD=test-password'
-      - 'REDIS_NODES=redis-node-0 redis-node-1 redis-node-2'
+      - 'REDIS_NODES=valkey-node-0 valkey-node-1 valkey-node-2'
 
-  redis-node-2:
-    container_name: "eduseal_dev_redis-node-2"
-    image: docker.io/bitnami/redis-cluster:7.2
+  valkey-node-2:
+    container_name: "eduseal_dev_valkey-node-2"
+    image: docker.io/bitnami/valkey-cluster:8.1
     volumes:
-      - redis-cluster_data-2:/bitnami/redis/data
+      - valkey-cluster_data-2:/bitnami/redis/data
     depends_on:
-      - redis-node-0
-      - redis-node-1
+      - valkey-node-0
+      - valkey-node-1
     networks:
       eduseal-dev-net:
         ipv4_address: 172.20.50.32
@@ -162,7 +162,7 @@ services:
       - 'REDIS_PASSWORD=test-password'
       - 'REDISCLI_AUTH=test-password'
       - 'REDIS_CLUSTER_REPLICAS=1'
-      - 'REDIS_NODES=redis-node-0 redis-node-1 redis-node-2'
+      - 'REDIS_NODES=valkey-node-0 valkey-node-1 valkey-node-2'
       - 'REDIS_CLUSTER_CREATOR=yes'
 
   nats1:
@@ -249,11 +249,11 @@ networks:
       config:
         - subnet: 172.20.50.0/24
 volumes:
-  redis-cluster_data-0:
+  valkey-cluster_data-0:
     driver: local
-  redis-cluster_data-1:
+  valkey-cluster_data-1:
     driver: local
-  redis-cluster_data-2:
+  valkey-cluster_data-2:
     driver: local
   nats1:
     external: true
