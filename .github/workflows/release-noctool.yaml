@@ -39,9 +39,9 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: "0"
         run: |
-          go build -ldflags "-w -s --extldflags '-static' -X main.GitCommit=$(git rev-parse --short HEAD) -X main.BuildDate=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+          go build -ldflags "-w -s --extldflags '-static' -X main.Version=${GITHUB_REF_NAME} -X main.GitCommit=$(git rev-parse --short HEAD) -X main.BuildDate=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
             -o noctool-${{ matrix.goos }}-${{ matrix.goarch }} \
-            ./cmd/noctool
+            ./tools/noctool
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
