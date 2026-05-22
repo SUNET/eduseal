@@ -52,33 +52,17 @@ type Common struct {
 	ValidatorNodes       []string `yaml:"validator_nodes" validate:"omitempty"`
 	ValidatorServiceName string   `yaml:"validator_service_name" validate:"omitempty"`
 	RootCAPath           string   `yaml:"root_ca_path"`
-	Redict               Redict   `yaml:"redict" validate:"required"`
+	KV                   KV       `yaml:"kv" validate:"required"`
 	Queue                Queue    `yaml:"queue" validate:"required"`
 }
 
-// Redict holds the key/value configuration
-type Redict struct {
+// KV holds the key/value store configuration.
+// Type selects the backend: "valkey" (default) or "redict".
+type KV struct {
+	Type     string   `yaml:"type" validate:"omitempty,oneof=valkey redict"`
 	Nodes    []string `yaml:"nodes" validate:"required"`
-	Password string   `yaml:"password" validate:"required"`
+	Password string   `yaml:"password"`
 	TLS      TLS      `yaml:"tls" validate:"omitempty"`
-}
-
-// SMT Spares Merkel Tree configuration
-type SMT struct {
-	UpdatePeriodicity int    `yaml:"update_periodicity" validate:"required"`
-	InitLeaf          string `yaml:"init_leaf" validate:"required"`
-}
-
-// GRPCServer holds the rpc configuration
-type GRPCServer struct {
-	Addr   string `yaml:"addr" validate:"required"`
-	Secure bool   `yaml:"secure"`
-}
-
-// PDF holds the pdf configuration (special Ladok case)
-type PDF struct {
-	KeepSignedDuration   int `yaml:"keep_signed_duration"`
-	KeepUnsignedDuration int `yaml:"keep_unsigned_duration"`
 }
 
 // APIGW holds the datastore configuration

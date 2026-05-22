@@ -52,16 +52,36 @@ class Validator(Common, pb2_grpc.ValidatorServicer):
         self._active_validations = 0
         self._active_lock = threading.Lock()
 
-        ca_cert = load_cert_from_pemder("/validation_roots/HARICA.crt")
-        vr_cert = load_cert_from_pemder("/validation_roots/vr.crt")
+        trust_roots = self._load_trust_roots(self.config.validation_certificates_path)
+        if not trust_roots:
+            self.logger.error(f"No certificates found in {self.config.validation_certificates_path}")
+            raise RuntimeError(f"No certificates found in {self.config.validation_certificates_path}")
+
         self.validation_context = ValidationContext(
-            trust_roots=[ca_cert, vr_cert],
+            trust_roots=trust_roots,
         )
 
     @property
     def active_validations(self) -> int:
         with self._active_lock:
             return self._active_validations
+
+    def _load_trust_roots(self, certs_path: str) -> list:
+        """Load all .crt, .pem, and .der certificates from the configured directory."""
+        trust_roots = []
+        for entry in sorted(os.listdir(certs_path)):
+            if not entry.lower().endswith((".crt", ".pem", ".der")):
+                continue
+            full_path = os.path.join(certs_path, entry)
+            if not os.path.isfile(full_path):
+                continue
+            try:
+                cert = load_cert_from_pemder(full_path)
+                trust_roots.append(cert)
+                self.logger.info(f"Loaded trust root: {entry}")
+            except Exception as e:
+                self.logger.warning(f"Skipping {entry}: {e}")
+        return trust_roots
 
     def Validate(self, in_data: ValidateRequest, context) -> ValidateReply:
         with self._active_lock:

@@ -137,9 +137,31 @@ func (s *Service) middlewareJWTAuth(ctx context.Context) gin.HandlerFunc {
 		}
 
 		// Check if the requested access is allowed
+		var accessService string
+		var accessFound bool
+
+		log.Debug("JWT claims", "claims", claims)
+
 		organizationID, ok := claims["organization_id"]
-		if !ok {
-			details := "organization_id not found in claims"
+		if ok {
+			organizationIDStr, ok := organizationID.(string)
+			if ok {
+				accessService, accessFound = s.config.APIGW.JWTAuth.Access[organizationIDStr]
+			}
+		}
+
+		// Fallback: check if the client certificate CN (from "common_name" claim) is in the access map with value "cn"
+		if !accessFound {
+			if cn, ok := claims["common_name"].(string); ok {
+				if v, cnOK := s.config.APIGW.JWTAuth.Access[cn]; cnOK && v == "cn" {
+					accessService = v
+					accessFound = true
+				}
+			}
+		}
+
+		if !accessFound {
+			details := "access not found in config (no matching organization_id or client certificate CN)"
 			log.Debug(details)
 			err := helpers.Error{
 				Title:   "unauthorized",
@@ -150,50 +172,29 @@ func (s *Service) middlewareJWTAuth(ctx context.Context) gin.HandlerFunc {
 			return
 		}
 
-		organizationIDStr, ok := organizationID.(string)
-		if !ok {
-			details := "organization_id not a string"
-			log.Debug(details)
-			err := helpers.Error{
-				Title:   "unauthorized",
-				Details: details,
+		// CN-based access is authorized by the mTLS certificate itself, skip requested_access check
+		if accessService != "cn" {
+			allowed := false
+			if requestedAccess, ok := claims["requested_access"].([]any); ok {
+				for _, accessClaim := range requestedAccess {
+					ac := accessClaim.(map[string]any)
+					if ac["type"] == accessService {
+						allowed = true
+						break
+					}
+				}
 			}
-			renderContent(c, 401, gin.H{"data": nil, "error": err})
-			c.Abort()
-			return
-		}
-
-		accessService, ok := s.config.APIGW.JWTAuth.Access[organizationIDStr]
-		if !ok {
-			details := "organization_id not found in config"
-			log.Debug(details)
-			err := helpers.Error{
-				Title:   "unauthorized",
-				Details: details,
+			if !allowed {
+				details := "requested access not allowed"
+				log.Debug(details)
+				err := helpers.Error{
+					Title:   "unauthorized",
+					Details: details,
+				}
+				renderContent(c, 401, gin.H{"data": nil, "error": err})
+				c.Abort()
+				return
 			}
-			renderContent(c, 401, gin.H{"data": nil, "error": err})
-			c.Abort()
-			return
-		}
-
-		allowed := false
-		for _, accessClaim := range claims["requested_access"].([]any) {
-			ac := accessClaim.(map[string]any)
-			if ac["type"] == accessService {
-				allowed = true
-				break
-			}
-		}
-		if !allowed {
-			details := "requested access not allowed"
-			log.Debug(details)
-			err := helpers.Error{
-				Title:   "unauthorized",
-				Details: details,
-			}
-			renderContent(c, 401, gin.H{"data": nil, "error": err})
-			c.Abort()
-			return
 		}
 
 		c.Next()

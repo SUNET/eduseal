@@ -2,26 +2,19 @@ package kvclient
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"eduseal/internal/gen/status/v1_status"
 	"eduseal/pkg/logger"
 	"eduseal/pkg/model"
 	"eduseal/pkg/trace"
 	"fmt"
-	"os"
-	"path/filepath"
 	"time"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
-
-	"github.com/redis/go-redis/v9"
-	//"codeberg.org/redict/go-redic"
 )
 
 // Client holds the kv object
 type Client struct {
-	RedictCC   *redis.ClusterClient
+	backend    Backend
 	cfg        *model.Cfg
 	log        *logger.Log
 	probeStore *v1_status.StatusProbeStore
@@ -40,48 +33,25 @@ func New(ctx context.Context, cfg *model.Cfg, tracer *trace.Tracer, log *logger.
 		tp:         tracer,
 	}
 
-	//clientCert, err := tls.LoadX509KeyPair(cfg.APIGW.ClientCert.CertFilePath, cfg.APIGW.ClientCert.KeyFilePath)
-	//if err != nil {
-	//	return nil, err
-	//}
+	kvCfg := &cfg.Common.KV
 
-	clusterOpts := &redis.ClusterOptions{
-		Addrs:    cfg.Common.Redict.Nodes,
-		Password: cfg.Common.Redict.Password,
+	kvType := kvCfg.Type
+	if kvType == "" {
+		kvType = "valkey"
 	}
 
-	if cfg.Common.Redict.TLS.Enabled {
-		tlsConfig := &tls.Config{
-			MinVersion: tls.VersionTLS12,
-			ServerName: cfg.Common.Redict.TLS.ServerName,
-		}
-
-		if cfg.Common.Redict.TLS.RootCAPath != "" {
-			caCertByte, err := os.ReadFile(filepath.Clean(cfg.Common.Redict.TLS.RootCAPath))
-			if err != nil {
-				return nil, fmt.Errorf("failed to read redict root CA: %w", err)
-			}
-			caCertPool := x509.NewCertPool()
-			if !caCertPool.AppendCertsFromPEM(caCertByte) {
-				return nil, fmt.Errorf("failed to parse redict root CA at %q", cfg.Common.Redict.TLS.RootCAPath)
-			}
-			tlsConfig.RootCAs = caCertPool
-		}
-
-		// Config validation guarantees both are set when TLS is enabled.
-		clientCert, err := tls.LoadX509KeyPair(
-			filepath.Clean(cfg.Common.Redict.TLS.CertFilePath),
-			filepath.Clean(cfg.Common.Redict.TLS.KeyFilePath),
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load redict client cert: %w", err)
-		}
-		tlsConfig.Certificates = []tls.Certificate{clientCert}
-
-		clusterOpts.TLSConfig = tlsConfig
+	var err error
+	switch kvType {
+	case "valkey":
+		c.backend, err = newValkeyBackend(kvCfg)
+	case "redict":
+		c.backend, err = newRedictBackend(kvCfg)
+	default:
+		return nil, fmt.Errorf("unsupported kv type: %q (must be \"valkey\" or \"redict\")", kvType)
 	}
-
-	c.RedictCC = redis.NewClusterClient(clusterOpts)
+	if err != nil {
+		return nil, err
+	}
 
 	c.statusTick = time.NewTicker(time.Second * 10)
 
@@ -113,8 +83,7 @@ func (c *Client) probe(ctx context.Context) {
 		Message:       "OK",
 		LastCheckedTS: timestamppb.Now(),
 	}
-	_, err := c.RedictCC.Ping(ctx).Result()
-	if err != nil {
+	if err := c.backend.Ping(ctx); err != nil {
 		c.probeStore.PreviousResult.Message = err.Error()
 		c.probeStore.PreviousResult.Healthy = false
 	}
@@ -130,5 +99,6 @@ func (c *Client) Status(ctx context.Context) *v1_status.StatusProbe {
 
 // Close closes the connection to the database
 func (c *Client) Close(ctx context.Context) error {
-	return c.RedictCC.Close()
+	c.backend.Close()
+	return nil
 }
