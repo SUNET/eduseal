@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"eduseal/pkg/model"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 
@@ -30,7 +31,6 @@ func newValkeyBackend(cfg *model.KV) (*valkeyBackend, error) {
 	if cfg.TLS.Enabled {
 		tlsConfig := &tls.Config{
 			MinVersion: tls.VersionTLS12,
-			ServerName: cfg.TLS.ServerName,
 		}
 
 		if cfg.TLS.RootCAPath != "" {
@@ -55,6 +55,22 @@ func newValkeyBackend(cfg *model.KV) (*valkeyBackend, error) {
 		tlsConfig.Certificates = []tls.Certificate{clientCert}
 
 		clientOpt.TLSConfig = tlsConfig
+
+		// Cluster discovery (CLUSTER SLOTS / CLUSTER SHARDS) typically
+		// returns IP addresses.  Build an IP→hostname reverse map from
+		// the configured nodes so we can set the correct TLS ServerName
+		// for each connection, even when dialing a discovered IP.
+		ipToHost := buildIPToHostMap(context.Background(), cfg.Nodes)
+		if len(ipToHost) > 0 {
+			clientOpt.DialCtxFn = func(ctx context.Context, addr string, dialer *net.Dialer, tc *tls.Config) (net.Conn, error) {
+				if hostname, ok := ipToHost[addr]; ok {
+					tc = tc.Clone()
+					tc.ServerName = hostname
+				}
+				d := tls.Dialer{NetDialer: dialer, Config: tc}
+				return d.DialContext(ctx, "tcp", addr)
+			}
+		}
 	}
 
 	c, err := valkey.NewClient(clientOpt)

@@ -26,7 +26,6 @@ func newRedictBackend(cfg *model.KV) (*redictBackend, error) {
 	if cfg.TLS.Enabled {
 		tlsConfig := &tls.Config{
 			MinVersion: tls.VersionTLS12,
-			ServerName: cfg.TLS.ServerName,
 		}
 
 		if cfg.TLS.RootCAPath != "" {
@@ -51,6 +50,15 @@ func newRedictBackend(cfg *model.KV) (*redictBackend, error) {
 		tlsConfig.Certificates = []tls.Certificate{clientCert}
 
 		opts.TLSConfig = tlsConfig
+
+		// Cluster discovery (CLUSTER SLOTS / CLUSTER SHARDS) typically
+		// returns IP addresses.  Build an IP→hostname reverse map from
+		// the configured nodes so we can set the correct TLS ServerName
+		// for each connection, even when dialing a discovered IP.
+		ipToHost := buildIPToHostMap(context.Background(), cfg.Nodes)
+		if len(ipToHost) > 0 {
+			opts.Dialer = tlsDialer(tlsConfig, ipToHost)
+		}
 	}
 
 	c := redis.NewUniversalClient(opts)
