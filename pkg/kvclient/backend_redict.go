@@ -55,7 +55,7 @@ func newRedictBackend(cfg *model.KV) (*redictBackend, error) {
 		// returns IP addresses.  Build an IP→hostname reverse map from
 		// the configured nodes so we can set the correct TLS ServerName
 		// for each connection, even when dialing a discovered IP.
-		ipToHost := buildIPToHostMap(cfg.Nodes)
+		ipToHost := buildIPToHostMap(context.Background(), cfg.Nodes)
 		if len(ipToHost) > 0 {
 			opts.Dialer = tlsDialer(tlsConfig, ipToHost)
 		}

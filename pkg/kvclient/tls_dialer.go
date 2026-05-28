@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"net"
+	"time"
 )
 
 // buildIPToHostMap resolves every address in nodes (host:port) and returns a
@@ -12,7 +13,9 @@ import (
 // certificate was issued for and set TLS ServerName accordingly.
 // The key includes the port so that two different hostnames sharing an IP
 // on different ports are not confused.
-func buildIPToHostMap(nodes []string) map[string]string {
+// The caller controls the overall deadline via ctx; each individual lookup
+// is additionally capped at 2 seconds.
+func buildIPToHostMap(ctx context.Context, nodes []string) map[string]string {
 	m := make(map[string]string, len(nodes))
 	for _, addr := range nodes {
 		host, port, err := net.SplitHostPort(addr)
@@ -23,7 +26,9 @@ func buildIPToHostMap(nodes []string) map[string]string {
 		if net.ParseIP(host) != nil {
 			continue
 		}
-		ips, err := net.LookupHost(host)
+		lookupCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+		ips, err := net.DefaultResolver.LookupHost(lookupCtx, host)
+		cancel()
 		if err != nil {
 			continue
 		}

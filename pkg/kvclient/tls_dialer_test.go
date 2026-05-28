@@ -19,30 +19,39 @@ import (
 )
 
 func TestBuildIPToHostMap_Hostnames(t *testing.T) {
-	// Use localhost which always resolves to 127.0.0.1.
-	m := buildIPToHostMap([]string{"localhost:6379", "localhost:6380"})
+	// Resolve localhost dynamically so the test works on IPv4-only,
+	// IPv6-only, and dual-stack environments.
+	addrs, err := net.LookupHost("localhost")
+	require.NoError(t, err)
+	require.NotEmpty(t, addrs)
 
-	assert.Contains(t, m, "127.0.0.1:6379")
-	assert.Contains(t, m, "127.0.0.1:6380")
-	assert.Equal(t, "localhost", m["127.0.0.1:6379"])
-	assert.Equal(t, "localhost", m["127.0.0.1:6380"])
+	m := buildIPToHostMap(t.Context(), []string{"localhost:6379", "localhost:6380"})
+
+	for _, ip := range addrs {
+		key79 := net.JoinHostPort(ip, "6379")
+		key80 := net.JoinHostPort(ip, "6380")
+		assert.Contains(t, m, key79)
+		assert.Contains(t, m, key80)
+		assert.Equal(t, "localhost", m[key79])
+		assert.Equal(t, "localhost", m[key80])
+	}
 }
 
 func TestBuildIPToHostMap_IPsAreSkipped(t *testing.T) {
-	m := buildIPToHostMap([]string{"10.0.0.1:6379", "192.168.1.1:6380"})
+	m := buildIPToHostMap(t.Context(), []string{"10.0.0.1:6379", "192.168.1.1:6380"})
 	assert.Empty(t, m, "bare IPs should not appear in the map")
 }
 
 func TestBuildIPToHostMap_Empty(t *testing.T) {
-	m := buildIPToHostMap(nil)
+	m := buildIPToHostMap(t.Context(), nil)
 	assert.Empty(t, m)
 
-	m = buildIPToHostMap([]string{})
+	m = buildIPToHostMap(t.Context(), []string{})
 	assert.Empty(t, m)
 }
 
 func TestBuildIPToHostMap_BadAddresses(t *testing.T) {
-	m := buildIPToHostMap([]string{
+	m := buildIPToHostMap(t.Context(), []string{
 		"no-port",
 		":6379",
 		"",
@@ -51,20 +60,26 @@ func TestBuildIPToHostMap_BadAddresses(t *testing.T) {
 }
 
 func TestBuildIPToHostMap_UnresolvableHost(t *testing.T) {
-	m := buildIPToHostMap([]string{"this-host-does-not-exist.invalid:6379"})
+	m := buildIPToHostMap(t.Context(), []string{"this-host-does-not-exist.invalid:6379"})
 	assert.Empty(t, m)
 }
 
 func TestBuildIPToHostMap_DuplicateHostDifferentPorts(t *testing.T) {
-	m := buildIPToHostMap([]string{
+	addrs, err := net.LookupHost("localhost")
+	require.NoError(t, err)
+	require.NotEmpty(t, addrs)
+
+	m := buildIPToHostMap(t.Context(), []string{
 		"localhost:6379",
 		"localhost:6380",
 		"localhost:6381",
 	})
-	// All three ports on the same IP should be present.
-	assert.Equal(t, "localhost", m["127.0.0.1:6379"])
-	assert.Equal(t, "localhost", m["127.0.0.1:6380"])
-	assert.Equal(t, "localhost", m["127.0.0.1:6381"])
+	// All three ports on each resolved IP should be present.
+	for _, ip := range addrs {
+		assert.Equal(t, "localhost", m[net.JoinHostPort(ip, "6379")])
+		assert.Equal(t, "localhost", m[net.JoinHostPort(ip, "6380")])
+		assert.Equal(t, "localhost", m[net.JoinHostPort(ip, "6381")])
+	}
 }
 
 // ---------- TLS dialer tests ----------
