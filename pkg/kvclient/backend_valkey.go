@@ -31,7 +31,6 @@ func newValkeyBackend(cfg *model.KV) (*valkeyBackend, error) {
 	if cfg.TLS.Enabled {
 		tlsConfig := &tls.Config{
 			MinVersion: tls.VersionTLS12,
-			ServerName: cfg.TLS.ServerName,
 		}
 
 		if cfg.TLS.RootCAPath != "" {
@@ -64,8 +63,7 @@ func newValkeyBackend(cfg *model.KV) (*valkeyBackend, error) {
 		ipToHost := buildIPToHostMap(cfg.Nodes)
 		if len(ipToHost) > 0 {
 			clientOpt.DialCtxFn = func(ctx context.Context, addr string, dialer *net.Dialer, tc *tls.Config) (net.Conn, error) {
-				host, _, _ := net.SplitHostPort(addr)
-				if hostname, ok := ipToHost[host]; ok {
+				if hostname, ok := ipToHost[addr]; ok {
 					tc = tc.Clone()
 					tc.ServerName = hostname
 				}

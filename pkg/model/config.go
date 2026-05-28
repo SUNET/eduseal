@@ -19,8 +19,10 @@ type JWTAuth struct {
 // When Enabled is true, CertFilePath and KeyFilePath are required.
 // RootCAPath is optional and only used when verifying a peer against a
 // custom CA (client TLS / mTLS).
-// ServerName overrides the server name used for certificate verification
-// (useful when connecting by IP but the certificate only has a CN/DNS SAN).
+// ServerName overrides the server name used for certificate verification.
+// It is only used by the queue (NATS) connection.  KV backends (Valkey /
+// Redict) derive the correct ServerName per-connection from the configured
+// node addresses, so ServerName is not needed for KV.
 type TLS struct {
 	Enabled      bool   `yaml:"enabled"`
 	CertFilePath string `yaml:"cert_file_path" validate:"required_if=Enabled true"`

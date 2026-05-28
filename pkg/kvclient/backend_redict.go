@@ -26,7 +26,6 @@ func newRedictBackend(cfg *model.KV) (*redictBackend, error) {
 	if cfg.TLS.Enabled {
 		tlsConfig := &tls.Config{
 			MinVersion: tls.VersionTLS12,
-			ServerName: cfg.TLS.ServerName,
 		}
 
 		if cfg.TLS.RootCAPath != "" {

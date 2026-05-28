@@ -7,13 +7,15 @@ import (
 )
 
 // buildIPToHostMap resolves every address in nodes (host:port) and returns a
-// map from resolved IP to the original hostname.  When the cluster topology
-// comes back with bare IPs we can look up the hostname the certificate was
-// issued for and set TLS ServerName accordingly.
+// map from resolved ip:port to the original hostname.  When the cluster
+// topology comes back with bare IPs we can look up the hostname the
+// certificate was issued for and set TLS ServerName accordingly.
+// The key includes the port so that two different hostnames sharing an IP
+// on different ports are not confused.
 func buildIPToHostMap(nodes []string) map[string]string {
 	m := make(map[string]string, len(nodes))
 	for _, addr := range nodes {
-		host, _, err := net.SplitHostPort(addr)
+		host, port, err := net.SplitHostPort(addr)
 		if err != nil || host == "" {
 			continue
 		}
@@ -26,23 +28,22 @@ func buildIPToHostMap(nodes []string) map[string]string {
 			continue
 		}
 		for _, ip := range ips {
-			m[ip] = host
+			m[net.JoinHostPort(ip, port)] = host
 		}
 	}
 	return m
 }
 
 // tlsDialer returns a dial function that behaves like the default TLS
-// dialer but, when the destination address is an IP that appears in
-// ipToHost, clones the tls.Config and overrides ServerName with the
-// original hostname.  This makes cluster-discovered IPs verify against
-// the DNS SANs in the node's certificate.
+// dialer but, when the destination ip:port appears in ipToHost, clones
+// the tls.Config and sets ServerName to the original hostname.  This
+// makes cluster-discovered IPs verify against the DNS SANs in the
+// node's certificate.
 func tlsDialer(baseCfg *tls.Config, ipToHost map[string]string) func(ctx context.Context, network, addr string) (net.Conn, error) {
 	return func(ctx context.Context, network, addr string) (net.Conn, error) {
 		cfg := baseCfg
 
-		host, _, _ := net.SplitHostPort(addr)
-		if hostname, ok := ipToHost[host]; ok {
+		if hostname, ok := ipToHost[addr]; ok {
 			cfg = baseCfg.Clone()
 			cfg.ServerName = hostname
 		}
