@@ -365,6 +365,18 @@ class QueueServer(Common):
             ))
 
         try:
+            await js.find_stream_name_by_subject("CACHE")
+            self.logger.info("JetStream stream for subject CACHE already exists")
+        except Exception:
+            self.logger.info("Creating JetStream stream 'cache_stream' for subject CACHE")
+            await js.add_stream(StreamConfig(
+                name="cache_stream",
+                subjects=["CACHE"],
+                retention=RetentionPolicy.WORK_QUEUE,
+                no_ack=False,
+            ))
+
+        try:
             await js.consumer_info("seal_stream", "sealer")
             self.logger.info("JetStream consumer 'sealer' already exists")
         except Exception:
