@@ -87,10 +87,11 @@ type OTEL struct {
 
 // Queue holds the queue configuration
 type Queue struct {
-	Username string   `yaml:"username" validate:"required"`
-	Password string   `yaml:"password" validate:"required"`
-	Addr     []string `yaml:"addr" validate:"required"`
-	TLS      TLS      `yaml:"tls" validate:"omitempty"`
+	Username		string		`yaml:"username" validate:"required"`
+	Password		string		`yaml:"password" validate:"required"`
+	Addr			[]string	`yaml:"addr" validate:"required"`
+	TLS				TLS			`yaml:"tls" validate:"omitempty"`
+	StreamReplicas	int			`yaml:"stream_replicas"`
 }
 
 // Cfg is the main configuration structure for this application
