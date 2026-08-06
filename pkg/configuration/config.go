@@ -47,6 +47,10 @@ func Parse(ctx context.Context, logger *logger.Log) (*model.Cfg, error) {
 		return nil, err
 	}
 
+	if cfg.Common.Queue.StreamReplicas == 0 {
+		cfg.Common.Queue.StreamReplicas = 3
+	}
+
 	if err := helpers.Check(ctx, cfg, cfg, logger); err != nil {
 		return nil, err
 	}

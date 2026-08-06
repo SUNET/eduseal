@@ -75,6 +75,7 @@ func (s *cacheStream) createStream(ctx context.Context) error {
 		Subjects:  []string{"CACHE"},
 		Retention: jetstream.WorkQueuePolicy,
 		NoAck:     false,
+		Replicas:  s.service.cfg.Common.Queue.StreamReplicas,
 	})
 	if err != nil {
 		s.log.Error(err, "Failed to create stream")
