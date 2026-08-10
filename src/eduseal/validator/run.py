@@ -18,6 +18,7 @@ from pyhanko.pdf_utils.reader import PdfFileReader
 from eduseal.validator.v1_validator_pb2 import ValidateReply, ValidateRequest
 import eduseal.validator.v1_validator_pb2_grpc as pb2_grpc
 from eduseal.validator.config import parse, CFG
+from eduseal.cert_reloader import CertReloader
 
 class Common():
     def __init__(self):
@@ -163,6 +164,7 @@ class GRPCServer(Common):
     def __init__(self) -> None:
         super().__init__()
         self._shutdown_event = threading.Event()
+        self._cert_reloader = None
 
     def _remove_healthcheck(self):
         """Remove healthcheck file so load balancer stops sending new requests."""
@@ -186,12 +188,28 @@ class GRPCServer(Common):
             assert self.config.grpc_server.private_key_path is not None
             assert self.config.grpc_server.certificate_chain_path is not None
 
-            with open(self.config.grpc_server.private_key_path, 'rb') as f:
-                private_key = f.read()
-            with open(self.config.grpc_server.certificate_chain_path, 'rb') as f:
-                certificate_chain = f.read()
+            def _fetch_cert_config():
+                with open(self.config.grpc_server.private_key_path, 'rb') as f:
+                    private_key = f.read()
+                with open(self.config.grpc_server.certificate_chain_path, 'rb') as f:
+                    certificate_chain = f.read()
+                return grpc.ssl_server_certificate_configuration(
+                    [(private_key, certificate_chain)]
+                )
 
-            server_credentials = grpc.ssl_server_credentials( ( (private_key, certificate_chain), ) )
+            initial_config = _fetch_cert_config()
+            server_credentials = grpc.dynamic_ssl_server_credentials(
+                initial_config,
+                _fetch_cert_config,
+            )
+
+            # Log when cert files change on disk
+            self._cert_reloader = CertReloader(
+                self.config.grpc_server.certificate_chain_path,
+                self.config.grpc_server.private_key_path,
+                lambda: self.logger.info("gRPC cert files changed; new connections will use updated certificate"),
+                self.logger,
+            )
 
             server.add_secure_port(self.config.grpc_server.addr, server_credentials)
 
@@ -219,6 +237,9 @@ class GRPCServer(Common):
         )
         shutdown_event = server.stop(grace=self.GRACEFUL_SHUTDOWN_TIMEOUT)
         shutdown_event.wait()
+
+        if self._cert_reloader is not None:
+            self._cert_reloader.stop()
 
         self.logger.info("Server stopped gracefully")
 

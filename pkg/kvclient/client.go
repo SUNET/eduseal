@@ -3,6 +3,7 @@ package kvclient
 import (
 	"context"
 	"eduseal/internal/gen/status/v1_status"
+	"eduseal/pkg/certreloader"
 	"eduseal/pkg/logger"
 	"eduseal/pkg/model"
 	"eduseal/pkg/trace"
@@ -14,12 +15,13 @@ import (
 
 // Client holds the kv object
 type Client struct {
-	backend    Backend
-	cfg        *model.Cfg
-	log        *logger.Log
-	probeStore *v1_status.StatusProbeStore
-	tp         *trace.Tracer
-	statusTick *time.Ticker
+	backend      Backend
+	cfg          *model.Cfg
+	log          *logger.Log
+	probeStore   *v1_status.StatusProbeStore
+	tp           *trace.Tracer
+	statusTick   *time.Ticker
+	certReloader *certreloader.CertReloader
 
 	Doc *Doc
 }
@@ -35,17 +37,25 @@ func New(ctx context.Context, cfg *model.Cfg, tracer *trace.Tracer, log *logger.
 
 	kvCfg := &cfg.Common.KV
 
+	var err error
+
+	if kvCfg.TLS.Enabled && kvCfg.TLS.CertFilePath != "" {
+		c.certReloader, err = certreloader.New(kvCfg.TLS.CertFilePath, kvCfg.TLS.KeyFilePath, log)
+		if err != nil {
+			return nil, fmt.Errorf("kv cert reloader: %w", err)
+		}
+	}
+
 	kvType := kvCfg.Type
 	if kvType == "" {
 		kvType = "valkey"
 	}
 
-	var err error
 	switch kvType {
 	case "valkey":
-		c.backend, err = newValkeyBackend(kvCfg)
+		c.backend, err = newValkeyBackend(kvCfg, c.certReloader)
 	case "redict":
-		c.backend, err = newRedictBackend(kvCfg)
+		c.backend, err = newRedictBackend(kvCfg, c.certReloader)
 	default:
 		return nil, fmt.Errorf("unsupported kv type: %q (must be \"valkey\" or \"redict\")", kvType)
 	}
@@ -99,6 +109,9 @@ func (c *Client) Status(ctx context.Context) *v1_status.StatusProbe {
 
 // Close closes the connection to the database
 func (c *Client) Close(ctx context.Context) error {
+	if c.certReloader != nil {
+		c.certReloader.Close()
+	}
 	c.backend.Close()
 	return nil
 }

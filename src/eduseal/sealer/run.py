@@ -20,6 +20,7 @@ from pyhanko.pdf_utils.misc import PdfReadError
 from eduseal.sealer.v1_sealer_pb2 import SealRequest, SealReply
 import eduseal.sealer.v1_sealer_pb2_grpc as pb2_grpc
 from eduseal.sealer.config import parse, CFG
+from eduseal.cert_reloader import CertReloader
 
 
 import asyncio
@@ -249,6 +250,7 @@ class QueueServer(Common):
         retry_delay = self.config.queue_retry.retry_delay
 
         tls_context = None
+        cert_reloader = None
         if self.config.queue.tls.enabled:
             tls_context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH)
             if self.config.queue.tls.root_ca_path:
@@ -257,6 +259,18 @@ class QueueServer(Common):
                 tls_context.load_cert_chain(
                     certfile=self.config.queue.tls.cert_file_path,
                     keyfile=self.config.queue.tls.key_file_path,
+                )
+                # Re-read cert+key when files change on disk (ACME renewal)
+                def _reload_tls():
+                    tls_context.load_cert_chain(
+                        certfile=self.config.queue.tls.cert_file_path,
+                        keyfile=self.config.queue.tls.key_file_path,
+                    )
+                cert_reloader = CertReloader(
+                    self.config.queue.tls.cert_file_path,
+                    self.config.queue.tls.key_file_path,
+                    _reload_tls,
+                    self.logger,
                 )
 
         for attempt in range(1, max_retries + 1):
@@ -420,6 +434,8 @@ class QueueServer(Common):
                 self.logger.error(f"Message handler error: {e}")
                 await asyncio.sleep(1)
 
+        if cert_reloader is not None:
+            cert_reloader.stop()
         await self._graceful_nats_shutdown(nc)
         asyncio.get_running_loop().stop()
 

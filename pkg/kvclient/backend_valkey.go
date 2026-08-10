@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"eduseal/pkg/certreloader"
 	"eduseal/pkg/model"
 	"fmt"
 	"net"
@@ -17,7 +18,7 @@ type valkeyBackend struct {
 	client valkey.Client
 }
 
-func newValkeyBackend(cfg *model.KV) (*valkeyBackend, error) {
+func newValkeyBackend(cfg *model.KV, cr *certreloader.CertReloader) (*valkeyBackend, error) {
 	clientOpt := valkey.ClientOption{
 		InitAddress: cfg.Nodes,
 		Password:    cfg.Password,
@@ -45,14 +46,18 @@ func newValkeyBackend(cfg *model.KV) (*valkeyBackend, error) {
 			tlsConfig.RootCAs = caCertPool
 		}
 
-		clientCert, err := tls.LoadX509KeyPair(
-			filepath.Clean(cfg.TLS.CertFilePath),
-			filepath.Clean(cfg.TLS.KeyFilePath),
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load kv client cert: %w", err)
+		if cr != nil {
+			tlsConfig.GetClientCertificate = cr.GetClientCertificate
+		} else if cfg.TLS.CertFilePath != "" {
+			clientCert, err := tls.LoadX509KeyPair(
+				filepath.Clean(cfg.TLS.CertFilePath),
+				filepath.Clean(cfg.TLS.KeyFilePath),
+			)
+			if err != nil {
+				return nil, fmt.Errorf("failed to load kv client cert: %w", err)
+			}
+			tlsConfig.Certificates = []tls.Certificate{clientCert}
 		}
-		tlsConfig.Certificates = []tls.Certificate{clientCert}
 
 		clientOpt.TLSConfig = tlsConfig
 

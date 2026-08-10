@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"eduseal/internal/gen/status/v1_status"
+	"eduseal/pkg/certreloader"
 	"eduseal/pkg/kvclient"
 	"eduseal/pkg/logger"
 	"eduseal/pkg/model"
@@ -22,13 +23,14 @@ import (
 
 // Service is the stream service object
 type Service struct {
-	log        *logger.Log
-	cfg        *model.Cfg
-	natsClient *nats.Conn
-	kv         *kvclient.Client
-	probeStore *v1_status.StatusProbeStore
-	statusTick *time.Ticker
-	tp         *trace.Tracer
+	log          *logger.Log
+	cfg          *model.Cfg
+	natsClient   *nats.Conn
+	kv           *kvclient.Client
+	probeStore   *v1_status.StatusProbeStore
+	statusTick   *time.Ticker
+	tp           *trace.Tracer
+	certReloader *certreloader.CertReloader
 
 	Seal  *sealStream
 	Cache *cacheStream
@@ -117,14 +119,18 @@ func (s *Service) connect(ctx context.Context) error {
 			tlsConfig.RootCAs = caCertPool
 		}
 
-		clientCert, err := tls.LoadX509KeyPair(
-			filepath.Clean(s.cfg.Common.Queue.TLS.CertFilePath),
-			filepath.Clean(s.cfg.Common.Queue.TLS.KeyFilePath),
-		)
-		if err != nil {
-			return fmt.Errorf("failed to load queue client cert: %w", err)
+		if s.cfg.Common.Queue.TLS.CertFilePath != "" {
+			reloader, err := certreloader.New(
+				s.cfg.Common.Queue.TLS.CertFilePath,
+				s.cfg.Common.Queue.TLS.KeyFilePath,
+				s.log,
+			)
+			if err != nil {
+				return fmt.Errorf("queue cert reloader: %w", err)
+			}
+			s.certReloader = reloader
+			tlsConfig.GetClientCertificate = reloader.GetClientCertificate
 		}
-		tlsConfig.Certificates = []tls.Certificate{clientCert}
 
 		opts = append(opts, nats.Secure(tlsConfig))
 	}
@@ -171,6 +177,10 @@ func (s *Service) Close(ctx context.Context) error {
 
 	if err := s.Seal.close(ctx); err != nil {
 		return err
+	}
+
+	if s.certReloader != nil {
+		s.certReloader.Close()
 	}
 
 	s.natsClient.Close()

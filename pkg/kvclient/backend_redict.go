@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"eduseal/pkg/certreloader"
 	"eduseal/pkg/model"
 	"fmt"
 	"os"
@@ -17,7 +18,7 @@ type redictBackend struct {
 	client redis.UniversalClient
 }
 
-func newRedictBackend(cfg *model.KV) (*redictBackend, error) {
+func newRedictBackend(cfg *model.KV, cr *certreloader.CertReloader) (*redictBackend, error) {
 	opts := &redis.UniversalOptions{
 		Addrs:    cfg.Nodes,
 		Password: cfg.Password,
@@ -40,14 +41,18 @@ func newRedictBackend(cfg *model.KV) (*redictBackend, error) {
 			tlsConfig.RootCAs = caCertPool
 		}
 
-		clientCert, err := tls.LoadX509KeyPair(
-			filepath.Clean(cfg.TLS.CertFilePath),
-			filepath.Clean(cfg.TLS.KeyFilePath),
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load kv client cert: %w", err)
+		if cr != nil {
+			tlsConfig.GetClientCertificate = cr.GetClientCertificate
+		} else if cfg.TLS.CertFilePath != "" {
+			clientCert, err := tls.LoadX509KeyPair(
+				filepath.Clean(cfg.TLS.CertFilePath),
+				filepath.Clean(cfg.TLS.KeyFilePath),
+			)
+			if err != nil {
+				return nil, fmt.Errorf("failed to load kv client cert: %w", err)
+			}
+			tlsConfig.Certificates = []tls.Certificate{clientCert}
 		}
-		tlsConfig.Certificates = []tls.Certificate{clientCert}
 
 		opts.TLSConfig = tlsConfig
 

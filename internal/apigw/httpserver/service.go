@@ -3,6 +3,7 @@ package httpserver
 import (
 	"context"
 	"eduseal/internal/apigw/apiv1"
+	"eduseal/pkg/certreloader"
 	"eduseal/pkg/helpers"
 	"eduseal/pkg/logger"
 	"eduseal/pkg/model"
@@ -20,12 +21,13 @@ import (
 
 // Service is the service object for httpserver
 type Service struct {
-	config *model.Cfg
-	logger *logger.Log
-	server *http.Server
-	apiv1  Apiv1
-	gin    *gin.Engine
-	tracer *trace.Tracer
+	config       *model.Cfg
+	logger       *logger.Log
+	server       *http.Server
+	apiv1        Apiv1
+	gin          *gin.Engine
+	tracer       *trace.Tracer
+	certReloader *certreloader.CertReloader
 }
 
 // New creates a new httpserver service
@@ -83,9 +85,13 @@ func New(ctx context.Context, config *model.Cfg, api *apiv1.Client, tracer *trac
 		s.logger.Info("TLS enabled", "enabled", s.config.APIGW.APIServer.TLS.Enabled)
 		if s.config.APIGW.APIServer.TLS.Enabled {
 			s.logger.Info("TLS enabled")
-			s.applyTLSConfig(ctx)
+			if err := s.applyTLSConfig(ctx); err != nil {
+				s.logger.Error(err, "apply_tls_config")
+				return
+			}
 
-			err := s.server.ListenAndServeTLS(s.config.APIGW.APIServer.TLS.CertFilePath, s.config.APIGW.APIServer.TLS.KeyFilePath)
+			// Empty strings: cert is served via tls.Config.GetCertificate callback
+			err := s.server.ListenAndServeTLS("", "")
 			if err != nil {
 				s.logger.Error(err, "listen_and_server_tls")
 			}
@@ -130,6 +136,10 @@ func renderContent(c *gin.Context, code int, data any) {
 // It stops accepting new requests and waits for in-flight requests to complete.
 func (s *Service) Close(ctx context.Context) error {
 	s.logger.Info("Starting graceful shutdown...")
+
+	if s.certReloader != nil {
+		s.certReloader.Close()
+	}
 
 	// Shutdown gracefully waits for active connections to finish
 	if err := s.server.Shutdown(ctx); err != nil {
