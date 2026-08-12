@@ -261,10 +261,12 @@ class QueueServer(Common):
                     keyfile=self.config.queue.tls.key_file_path,
                 )
                 # Re-read cert+key when files change on disk (ACME renewal)
+                loop = asyncio.get_event_loop()
                 def _reload_tls():
-                    tls_context.load_cert_chain(
-                        certfile=self.config.queue.tls.cert_file_path,
-                        keyfile=self.config.queue.tls.key_file_path,
+                    loop.call_soon_threadsafe(
+                        tls_context.load_cert_chain,
+                        self.config.queue.tls.cert_file_path,
+                        self.config.queue.tls.key_file_path,
                     )
                 self._cert_reloader = CertReloader(
                     self.config.queue.tls.cert_file_path,

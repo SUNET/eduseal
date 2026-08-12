@@ -59,12 +59,14 @@ func New(certPath, keyPath string, log *logger.Log) (*CertReloader, error) {
 
 // GetCertificate is a tls.Config.GetCertificate callback (server-side).
 func (r *CertReloader) GetCertificate(_ *tls.ClientHelloInfo) (*tls.Certificate, error) {
-	return r.cert.Load(), nil
+	cert := *r.cert.Load()
+	return &cert, nil
 }
 
 // GetClientCertificate is a tls.Config.GetClientCertificate callback (client-side).
 func (r *CertReloader) GetClientCertificate(_ *tls.CertificateRequestInfo) (*tls.Certificate, error) {
-	return r.cert.Load(), nil
+	cert := *r.cert.Load()
+	return &cert, nil
 }
 
 // Close stops the file watcher.
