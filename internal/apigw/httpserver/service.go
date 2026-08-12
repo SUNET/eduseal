@@ -8,6 +8,7 @@ import (
 	"eduseal/pkg/logger"
 	"eduseal/pkg/model"
 	"eduseal/pkg/trace"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -79,27 +80,23 @@ func New(ctx context.Context, config *model.Cfg, api *apiv1.Client, tracer *trac
 	s.regEndpoint(ctx, rgPDF, http.MethodGet, "/:transaction_id", s.endpointGetSignedPDF)
 	s.regEndpoint(ctx, rgPDF, http.MethodPost, "/validate", s.endpointValidatePDF)
 
+	if s.config.APIGW.APIServer.TLS.Enabled {
+		if err := s.applyTLSConfig(ctx); err != nil {
+			return nil, fmt.Errorf("apply TLS config: %w", err)
+		}
+	}
+
 	// Run http server
 	go func() {
 		s.logger.Info("ListenAndServe", "addr", s.config.APIGW.APIServer.Addr)
-		s.logger.Info("TLS enabled", "enabled", s.config.APIGW.APIServer.TLS.Enabled)
 		if s.config.APIGW.APIServer.TLS.Enabled {
-			s.logger.Info("TLS enabled")
-			if err := s.applyTLSConfig(ctx); err != nil {
-				s.logger.Error(err, "apply_tls_config")
-				return
-			}
-
 			// Empty strings: cert is served via tls.Config.GetCertificate callback
-			err := s.server.ListenAndServeTLS("", "")
-			if err != nil {
-				s.logger.Error(err, "listen_and_server_tls")
+			if err := s.server.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
+				s.logger.Error(err, "listen_and_serve_tls")
 			}
 		} else {
-			err := s.server.ListenAndServe()
-			s.logger.Info("TLS disabled")
-			if err != nil {
-				s.logger.Error(err, "listen_and_server")
+			if err := s.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				s.logger.Error(err, "listen_and_serve")
 			}
 		}
 	}()

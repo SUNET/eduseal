@@ -5,6 +5,7 @@ import (
 	"eduseal/pkg/logger"
 	"fmt"
 	"path/filepath"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -21,6 +22,7 @@ type CertReloader struct {
 	log      *logger.Log
 	watcher  *fsnotify.Watcher
 	done     chan struct{}
+	closeOnce sync.Once
 }
 
 // New loads the initial certificate and starts watching for file changes.
@@ -59,20 +61,32 @@ func New(certPath, keyPath string, log *logger.Log) (*CertReloader, error) {
 
 // GetCertificate is a tls.Config.GetCertificate callback (server-side).
 func (r *CertReloader) GetCertificate(_ *tls.ClientHelloInfo) (*tls.Certificate, error) {
-	cert := *r.cert.Load()
+	p := r.cert.Load()
+	if p == nil {
+		return nil, fmt.Errorf("certreloader: no certificate loaded")
+	}
+	cert := *p
 	return &cert, nil
 }
 
 // GetClientCertificate is a tls.Config.GetClientCertificate callback (client-side).
 func (r *CertReloader) GetClientCertificate(_ *tls.CertificateRequestInfo) (*tls.Certificate, error) {
-	cert := *r.cert.Load()
+	p := r.cert.Load()
+	if p == nil {
+		return nil, fmt.Errorf("certreloader: no certificate loaded")
+	}
+	cert := *p
 	return &cert, nil
 }
 
-// Close stops the file watcher.
+// Close stops the file watcher. Safe to call multiple times.
 func (r *CertReloader) Close() error {
-	close(r.done)
-	return r.watcher.Close()
+	var err error
+	r.closeOnce.Do(func() {
+		close(r.done)
+		err = r.watcher.Close()
+	})
+	return err
 }
 
 func (r *CertReloader) reload() error {
@@ -90,8 +104,8 @@ func (r *CertReloader) watchLoop() {
 	const debounce = 2 * time.Second
 	var timer *time.Timer
 
-	certBase := filepath.Base(r.certPath)
-	keyBase := filepath.Base(r.keyPath)
+	certClean := filepath.Clean(r.certPath)
+	keyClean := filepath.Clean(r.keyPath)
 
 	for {
 		select {
@@ -105,8 +119,8 @@ func (r *CertReloader) watchLoop() {
 			if !ok {
 				return
 			}
-			base := filepath.Base(event.Name)
-			if base != certBase && base != keyBase {
+			clean := filepath.Clean(event.Name)
+			if clean != certClean && clean != keyClean {
 				continue
 			}
 			relevant := event.Op&(fsnotify.Write|fsnotify.Create|fsnotify.Rename) != 0
