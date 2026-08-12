@@ -194,6 +194,7 @@ class QueueServer(Common):
         super().__init__()
         self.sealer = Sealer()
         self._shutdown_event = asyncio.Event()
+        self._cert_reloader = None
 
     async def _graceful_nats_shutdown(self, nc: NATS):
         """Gracefully shut down the NATS connection."""
@@ -250,7 +251,6 @@ class QueueServer(Common):
         retry_delay = self.config.queue_retry.retry_delay
 
         tls_context = None
-        cert_reloader = None
         if self.config.queue.tls.enabled:
             tls_context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH)
             if self.config.queue.tls.root_ca_path:
@@ -266,7 +266,7 @@ class QueueServer(Common):
                         certfile=self.config.queue.tls.cert_file_path,
                         keyfile=self.config.queue.tls.key_file_path,
                     )
-                cert_reloader = CertReloader(
+                self._cert_reloader = CertReloader(
                     self.config.queue.tls.cert_file_path,
                     self.config.queue.tls.key_file_path,
                     _reload_tls,
@@ -434,8 +434,6 @@ class QueueServer(Common):
                 self.logger.error(f"Message handler error: {e}")
                 await asyncio.sleep(1)
 
-        if cert_reloader is not None:
-            cert_reloader.stop()
         await self._graceful_nats_shutdown(nc)
         asyncio.get_running_loop().stop()
 
@@ -451,6 +449,8 @@ if __name__ == "__main__":
     except Exception as e:
         server.logger.error(f"error {e}")
     finally:
+        if server._cert_reloader is not None:
+            server._cert_reloader.stop()
         if os.path.exists(healthcheck_path):
             os.remove(healthcheck_path)
         # Cancel all pending tasks to avoid "Task was destroyed but it is pending!" warnings

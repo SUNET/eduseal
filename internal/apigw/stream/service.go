@@ -138,6 +138,10 @@ func (s *Service) connect(ctx context.Context) error {
 	var err error
 	s.natsClient, err = nats.Connect(servers, opts...)
 	if err != nil {
+		if s.certReloader != nil {
+			s.certReloader.Close()
+			s.certReloader = nil
+		}
 		s.log.Error(err, "Failed to connect to NATS")
 		return err
 	}

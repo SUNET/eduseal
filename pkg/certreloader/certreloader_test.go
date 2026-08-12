@@ -85,15 +85,17 @@ func TestReloadOnFileChange(t *testing.T) {
 	require.NoError(t, os.WriteFile(certPath, certPEM2, 0600))
 	require.NoError(t, os.WriteFile(keyPath, keyPEM2, 0600))
 
-	// Wait for debounce + processing
-	time.Sleep(4 * time.Second)
-
-	cert, err := r.GetCertificate(nil)
-	require.NoError(t, err)
-
-	leaf, err := x509.ParseCertificate(cert.Certificate[0])
-	require.NoError(t, err)
-	assert.Equal(t, "second", leaf.Subject.CommonName)
+	require.Eventually(t, func() bool {
+		cert, err := r.GetCertificate(nil)
+		if err != nil {
+			return false
+		}
+		leaf, err := x509.ParseCertificate(cert.Certificate[0])
+		if err != nil {
+			return false
+		}
+		return leaf.Subject.CommonName == "second"
+	}, 10*time.Second, 100*time.Millisecond, "certificate was not reloaded")
 }
 
 func TestInvalidCertKeepsOld(t *testing.T) {
@@ -109,8 +111,8 @@ func TestInvalidCertKeepsOld(t *testing.T) {
 	// Write garbage to the cert file
 	require.NoError(t, os.WriteFile(certPath, []byte("not a cert"), 0600))
 
-	// Wait for debounce + processing
-	time.Sleep(4 * time.Second)
+	// Wait long enough for the debounce to fire, then verify old cert is retained
+	time.Sleep(3 * time.Second)
 
 	cert, err := r.GetCertificate(nil)
 	require.NoError(t, err)
