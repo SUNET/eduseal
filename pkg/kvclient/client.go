@@ -57,9 +57,11 @@ func New(ctx context.Context, cfg *model.Cfg, tracer *trace.Tracer, log *logger.
 	case "redict":
 		c.backend, err = newRedictBackend(kvCfg, c.certReloader)
 	default:
+		c.closeCertReloader()
 		return nil, fmt.Errorf("unsupported kv type: %q (must be \"valkey\" or \"redict\")", kvType)
 	}
 	if err != nil {
+		c.closeCertReloader()
 		return nil, err
 	}
 
@@ -107,11 +109,17 @@ func (c *Client) Status(ctx context.Context) *v1_status.StatusProbe {
 	return c.probeStore.PreviousResult
 }
 
-// Close closes the connection to the database
-func (c *Client) Close(ctx context.Context) error {
+func (c *Client) closeCertReloader() {
 	if c.certReloader != nil {
 		c.certReloader.Close()
+		c.certReloader = nil
 	}
+}
+
+// Close closes the connection to the database
+func (c *Client) Close(ctx context.Context) error {
+	c.statusTick.Stop()
+	c.closeCertReloader()
 	c.backend.Close()
 	return nil
 }

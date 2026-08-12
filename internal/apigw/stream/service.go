@@ -175,6 +175,8 @@ func (s *Service) Status(ctx context.Context) *v1_status.StatusProbe {
 
 // Close closes the stream service
 func (s *Service) Close(ctx context.Context) error {
+	s.statusTick.Stop()
+
 	if err := s.Cache.close(ctx); err != nil {
 		return err
 	}
