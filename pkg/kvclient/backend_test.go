@@ -21,7 +21,7 @@ func TestNewValkeyBackend_TLS_BadRootCA(t *testing.T) {
 			CertFilePath: "testdata/client.crt",
 			KeyFilePath:  "testdata/client.key",
 		},
-	})
+	}, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to read kv root CA")
 }
@@ -40,7 +40,7 @@ func TestNewValkeyBackend_TLS_BadRootCAPEM(t *testing.T) {
 			CertFilePath: "testdata/client.crt",
 			KeyFilePath:  "testdata/client.key",
 		},
-	})
+	}, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to parse kv root CA")
 }
@@ -53,7 +53,7 @@ func TestNewValkeyBackend_TLS_BadClientCert(t *testing.T) {
 			CertFilePath: "/nonexistent/client.crt",
 			KeyFilePath:  "/nonexistent/client.key",
 		},
-	})
+	}, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to load kv client cert")
 }
@@ -69,7 +69,7 @@ func TestNewRedictBackend_TLS_BadRootCA(t *testing.T) {
 			CertFilePath: "testdata/client.crt",
 			KeyFilePath:  "testdata/client.key",
 		},
-	})
+	}, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to read kv root CA")
 }
@@ -87,7 +87,7 @@ func TestNewRedictBackend_TLS_BadRootCA_PEM(t *testing.T) {
 			CertFilePath: "testdata/client.crt",
 			KeyFilePath:  "testdata/client.key",
 		},
-	})
+	}, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to parse kv root CA")
 }
@@ -100,7 +100,7 @@ func TestNewRedictBackend_TLS_BadClientCert(t *testing.T) {
 			CertFilePath: "/nonexistent/client.crt",
 			KeyFilePath:  "/nonexistent/client.key",
 		},
-	})
+	}, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to load kv client cert")
 }
@@ -110,7 +110,7 @@ func TestNewRedictBackend_TLS_BadClientCert(t *testing.T) {
 func TestNewRedictBackend_NoTLS(t *testing.T) {
 	b, err := newRedictBackend(&model.KV{
 		Nodes: []string{"localhost:6379"},
-	})
+	}, nil)
 	require.NoError(t, err)
 	assert.NotNil(t, b)
 	b.Close()
@@ -119,7 +119,7 @@ func TestNewRedictBackend_NoTLS(t *testing.T) {
 func TestNewRedictBackend_MultiNode(t *testing.T) {
 	b, err := newRedictBackend(&model.KV{
 		Nodes: []string{"localhost:6379", "localhost:6380"},
-	})
+	}, nil)
 	require.NoError(t, err)
 	assert.NotNil(t, b)
 	b.Close()

@@ -3,10 +3,12 @@ package httpserver
 import (
 	"context"
 	"eduseal/internal/apigw/apiv1"
+	"eduseal/pkg/certreloader"
 	"eduseal/pkg/helpers"
 	"eduseal/pkg/logger"
 	"eduseal/pkg/model"
 	"eduseal/pkg/trace"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -20,12 +22,13 @@ import (
 
 // Service is the service object for httpserver
 type Service struct {
-	config *model.Cfg
-	logger *logger.Log
-	server *http.Server
-	apiv1  Apiv1
-	gin    *gin.Engine
-	tracer *trace.Tracer
+	config       *model.Cfg
+	logger       *logger.Log
+	server       *http.Server
+	apiv1        Apiv1
+	gin          *gin.Engine
+	tracer       *trace.Tracer
+	certReloader *certreloader.CertReloader
 }
 
 // New creates a new httpserver service
@@ -77,23 +80,23 @@ func New(ctx context.Context, config *model.Cfg, api *apiv1.Client, tracer *trac
 	s.regEndpoint(ctx, rgPDF, http.MethodGet, "/:transaction_id", s.endpointGetSignedPDF)
 	s.regEndpoint(ctx, rgPDF, http.MethodPost, "/validate", s.endpointValidatePDF)
 
+	if s.config.APIGW.APIServer.TLS.Enabled {
+		if err := s.applyTLSConfig(ctx); err != nil {
+			return nil, fmt.Errorf("apply TLS config: %w", err)
+		}
+	}
+
 	// Run http server
 	go func() {
 		s.logger.Info("ListenAndServe", "addr", s.config.APIGW.APIServer.Addr)
-		s.logger.Info("TLS enabled", "enabled", s.config.APIGW.APIServer.TLS.Enabled)
 		if s.config.APIGW.APIServer.TLS.Enabled {
-			s.logger.Info("TLS enabled")
-			s.applyTLSConfig(ctx)
-
-			err := s.server.ListenAndServeTLS(s.config.APIGW.APIServer.TLS.CertFilePath, s.config.APIGW.APIServer.TLS.KeyFilePath)
-			if err != nil {
-				s.logger.Error(err, "listen_and_server_tls")
+			// Empty strings: cert is served via tls.Config.GetCertificate callback
+			if err := s.server.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
+				s.logger.Error(err, "listen_and_serve_tls")
 			}
 		} else {
-			err := s.server.ListenAndServe()
-			s.logger.Info("TLS disabled")
-			if err != nil {
-				s.logger.Error(err, "listen_and_server")
+			if err := s.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				s.logger.Error(err, "listen_and_serve")
 			}
 		}
 	}()
@@ -130,6 +133,10 @@ func renderContent(c *gin.Context, code int, data any) {
 // It stops accepting new requests and waits for in-flight requests to complete.
 func (s *Service) Close(ctx context.Context) error {
 	s.logger.Info("Starting graceful shutdown...")
+
+	if s.certReloader != nil {
+		s.certReloader.Close()
+	}
 
 	// Shutdown gracefully waits for active connections to finish
 	if err := s.server.Shutdown(ctx); err != nil {

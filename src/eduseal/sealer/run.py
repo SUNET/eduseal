@@ -20,6 +20,7 @@ from pyhanko.pdf_utils.misc import PdfReadError
 from eduseal.sealer.v1_sealer_pb2 import SealRequest, SealReply
 import eduseal.sealer.v1_sealer_pb2_grpc as pb2_grpc
 from eduseal.sealer.config import parse, CFG
+from eduseal.cert_reloader import CertReloader
 
 
 import asyncio
@@ -193,6 +194,7 @@ class QueueServer(Common):
         super().__init__()
         self.sealer = Sealer()
         self._shutdown_event = asyncio.Event()
+        self._cert_reloader = None
 
     async def _graceful_nats_shutdown(self, nc: NATS):
         """Gracefully shut down the NATS connection."""
@@ -257,6 +259,20 @@ class QueueServer(Common):
                 tls_context.load_cert_chain(
                     certfile=self.config.queue.tls.cert_file_path,
                     keyfile=self.config.queue.tls.key_file_path,
+                )
+                # Re-read cert+key when files change on disk (ACME renewal)
+                loop = asyncio.get_event_loop()
+                def _reload_tls():
+                    loop.call_soon_threadsafe(
+                        tls_context.load_cert_chain,
+                        self.config.queue.tls.cert_file_path,
+                        self.config.queue.tls.key_file_path,
+                    )
+                self._cert_reloader = CertReloader(
+                    self.config.queue.tls.cert_file_path,
+                    self.config.queue.tls.key_file_path,
+                    _reload_tls,
+                    self.logger,
                 )
 
         for attempt in range(1, max_retries + 1):
@@ -435,6 +451,8 @@ if __name__ == "__main__":
     except Exception as e:
         server.logger.error(f"error {e}")
     finally:
+        if server._cert_reloader is not None:
+            server._cert_reloader.stop()
         if os.path.exists(healthcheck_path):
             os.remove(healthcheck_path)
         # Cancel all pending tasks to avoid "Task was destroyed but it is pending!" warnings
