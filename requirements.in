@@ -16,3 +16,4 @@ protobuf
 grpcio-health-checking
 asyncio
 nats-py
+PyYAML
