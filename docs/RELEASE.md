@@ -2,7 +2,7 @@
 
 ## Overview
 
-All services (**apigw**, **sealer**, **validator**,**queue**) are always released together under a single shared version tag. A release creates an annotated git tag and pushes it to origin, then images are built and pushed from a trusted local environment as part of `make release`.
+All services (**apigw**, **sealer**, **validator**, **queue**) are always released together under a single shared version tag. A release creates an annotated git tag and pushes it to origin, then images are built and pushed from a trusted local environment as part of `make release`.
 
 ### Tag format
 
