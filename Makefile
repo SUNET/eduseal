@@ -123,10 +123,12 @@ DOCKER_TAG_GOBUILD 				:= docker.sunet.se/eduseal/gobuild:$(VERSION)
 DOCKER_TAG_SEALER_SOFTHSM		:= docker.sunet.se/eduseal/sealer_softhsm:$(VERSION)
 DOCKER_TAG_SEALER_LUNAHSM		:= docker.sunet.se/eduseal/sealer_lunahsm:$(VERSION)
 DOCKER_TAG_VALIDATOR			:= docker.sunet.se/eduseal/validator:$(VERSION)
+DOCKER_TAG_QUEUE				:= docker.sunet.se/eduseal/queue:$(VERSION)
+
 
 
 #### Docker build
-docker-build-non-pkcs11-containers: docker-build-apigw docker-build-validator
+docker-build-non-pkcs11-containers: docker-build-apigw docker-build-validator docker-build-queue
 docker-build: docker-build-non-pkcs11-containers docker-build-sealer-lunahsm docker-build-sealer-softhsm
 docker-build-softhsm: docker-build-non-pkcs11-containers docker-build-sealer-softhsm
 
@@ -146,12 +148,16 @@ docker-build-validator:
 	$(info building docker image $(DOCKER_TAG_VALIDATOR) )
 	docker build --tag $(DOCKER_TAG_VALIDATOR) --file docker/validator/Dockerfile .
 
+docker-build-queue:
+	$(info building docker image $(DOCKER_TAG_QUEUE) )
+	docker build --tag $(DOCKER_TAG_QUEUE) --file docker/queue/Dockerfile .
+
 docker-build-gobuild:
 	$(info Docker Building gobuild with tag: $(VERSION))
 	docker build --tag $(DOCKER_TAG_GOBUILD) --file docker/gobuild .
 
 #### Docker push
-docker-push: docker-push-apigw docker-push-sealer-lunahsm docker-push-sealer-softhsm docker-push-validator
+docker-push: docker-push-apigw docker-push-sealer-lunahsm docker-push-sealer-softhsm docker-push-validator docker-push-queue
 	$(info Pushing docker images)
 
 docker-tag-latest:
@@ -160,6 +166,7 @@ docker-tag-latest:
 	docker tag $(DOCKER_TAG_SEALER_LUNAHSM) $(patsubst %:$(VERSION),%:latest,$(DOCKER_TAG_SEALER_LUNAHSM))
 	docker tag $(DOCKER_TAG_SEALER_SOFTHSM) $(patsubst %:$(VERSION),%:latest,$(DOCKER_TAG_SEALER_SOFTHSM))
 	docker tag $(DOCKER_TAG_VALIDATOR) $(patsubst %:$(VERSION),%:latest,$(DOCKER_TAG_VALIDATOR))
+	docker tag $(DOCKER_TAG_QUEUE) $(patsubst %:$(VERSION),%:latest,$(DOCKER_TAG_QUEUE))
 
 docker-push-latest:
 	$(info Pushing :latest image tags)
@@ -167,36 +174,42 @@ docker-push-latest:
 	docker push $(patsubst %:$(VERSION),%:latest,$(DOCKER_TAG_SEALER_LUNAHSM))
 	docker push $(patsubst %:$(VERSION),%:latest,$(DOCKER_TAG_SEALER_SOFTHSM))
 	docker push $(patsubst %:$(VERSION),%:latest,$(DOCKER_TAG_VALIDATOR))
+	docker push $(patsubst %:$(VERSION),%:latest,$(DOCKER_TAG_QUEUE))
 
 docker-pull-release:
 	$(info Pulling release-tagged images)
 	docker pull $(DOCKER_TAG_APIGW)
 	docker pull $(DOCKER_TAG_SEALER_LUNAHSM)
 	docker pull $(DOCKER_TAG_VALIDATOR)
+	docker pull $(DOCKER_TAG_QUEUE)
 
 docker-tag-prod:
 	$(info Tagging release images as :prod)
 	docker tag $(DOCKER_TAG_APIGW) $(patsubst %:$(VERSION),%:prod,$(DOCKER_TAG_APIGW))
 	docker tag $(DOCKER_TAG_SEALER_LUNAHSM) $(patsubst %:$(VERSION),%:prod,$(DOCKER_TAG_SEALER_LUNAHSM))
 	docker tag $(DOCKER_TAG_VALIDATOR) $(patsubst %:$(VERSION),%:prod,$(DOCKER_TAG_VALIDATOR))
+	docker tag $(DOCKER_TAG_QUEUE) $(patsubst %:$(VERSION),%:prod,$(DOCKER_TAG_QUEUE))
 
 docker-push-prod:
 	$(info Pushing :prod image tags)
 	docker push $(patsubst %:$(VERSION),%:prod,$(DOCKER_TAG_APIGW))
 	docker push $(patsubst %:$(VERSION),%:prod,$(DOCKER_TAG_SEALER_LUNAHSM))
 	docker push $(patsubst %:$(VERSION),%:prod,$(DOCKER_TAG_VALIDATOR))
+	docker push $(patsubst %:$(VERSION),%:prod,$(DOCKER_TAG_QUEUE))
 
 docker-tag-prod-version:
 	$(info Tagging release images as :prod-$(VERSION))
 	docker tag $(DOCKER_TAG_APIGW) $(patsubst %:$(VERSION),%:prod-$(VERSION),$(DOCKER_TAG_APIGW))
 	docker tag $(DOCKER_TAG_SEALER_LUNAHSM) $(patsubst %:$(VERSION),%:prod-$(VERSION),$(DOCKER_TAG_SEALER_LUNAHSM))
 	docker tag $(DOCKER_TAG_VALIDATOR) $(patsubst %:$(VERSION),%:prod-$(VERSION),$(DOCKER_TAG_VALIDATOR))
+	docker tag $(DOCKER_TAG_QUEUE) $(patsubst %:$(VERSION),%:prod-$(VERSION),$(DOCKER_TAG_QUEUE))
 
 docker-push-prod-version:
 	$(info Pushing :prod-$(VERSION) image tags)
 	docker push $(patsubst %:$(VERSION),%:prod-$(VERSION),$(DOCKER_TAG_APIGW))
 	docker push $(patsubst %:$(VERSION),%:prod-$(VERSION),$(DOCKER_TAG_SEALER_LUNAHSM))
 	docker push $(patsubst %:$(VERSION),%:prod-$(VERSION),$(DOCKER_TAG_VALIDATOR))
+	docker push $(patsubst %:$(VERSION),%:prod-$(VERSION),$(DOCKER_TAG_QUEUE))
 
 docker-push-apigw:
 	$(info Pushing docker images)
@@ -214,12 +227,16 @@ docker-push-validator:
 	$(info Pushing docker image)
 	docker push $(DOCKER_TAG_VALIDATOR)
 
+docker-push-queue:
+	$(info Pushing docker image)
+	docker push $(DOCKER_TAG_QUEUE)
+
 docker-push-gobuild:
 	$(info Pushing docker images)
 	docker push $(DOCKER_TAG_GOBUILD)
 
 #### Release targets
-# Creates a single vX.Y.Z tag for ALL services (apigw, sealer, validator).
+# Creates a single vX.Y.Z tag for ALL services (apigw, sealer, validator, queue).
 # Usage:
 #   make release               # defaults to patch bump
 #   make release BUMP=patch    # v1.0.0 -> v1.0.1
@@ -256,7 +273,7 @@ release:
 	if git rev-parse "$$NEW_TAG" >/dev/null 2>&1; then \
 		echo "Error: tag $$NEW_TAG already exists"; exit 1; \
 	fi; \
-	git tag -a "$$NEW_TAG" -m "Release $$NEW_TAG (apigw, sealer, validator)"; \
+	git tag -a "$$NEW_TAG" -m "Release $$NEW_TAG (apigw, sealer, validator, queue)"; \
 	git push origin "$$NEW_TAG"; \
 	git ls-remote --exit-code --tags origin "refs/tags/$$NEW_TAG" >/dev/null; \
 	$(MAKE) local-publish VERSION=$$NEW_TAG; \
@@ -265,7 +282,7 @@ release:
 	echo ""
 
 #### Local release publish
-# Builds and pushes apigw, sealer_lunahsm, validator images from a specific tag.
+# Builds and pushes apigw, sealer_lunahsm, validator, queue images from a specific tag.
 # Also updates :latest tags to point at that release.
 # Usage:
 #   make release-local TAG=v1.2.3

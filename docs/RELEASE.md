@@ -2,7 +2,7 @@
 
 ## Overview
 
-All services (**apigw**, **sealer**, **validator**) are always released together under a single shared version tag. A release creates an annotated git tag and pushes it to origin, then images are built and pushed from a trusted local environment as part of `make release`.
+All services (**apigw**, **sealer**, **validator**, **queue**) are always released together under a single shared version tag. A release creates an annotated git tag and pushes it to origin, then images are built and pushed from a trusted local environment as part of `make release`.
 
 ### Tag format
 
@@ -44,7 +44,7 @@ If `BUMP` is omitted, `make release` uses `patch`.
 5. **Creates** an annotated git tag (`vX.Y.Z`).
 6. **Pushes** the tag to `origin`.
 7. **Locally publishes** release images automatically as part of `make release`:
-   - Builds Docker images for **all three** services.
+   - Builds Docker images for **all four** services.
    - Pushes images to `docker.sunet.se/eduseal/<image>:<version>` and `:testing`.
 
 ## Pre-requisites
@@ -63,13 +63,14 @@ make release
 
 This target:
 - validates `VERSION`
-- builds `apigw`, `sealer_lunahsm`, `validator`
+- builds `apigw`, `sealer_lunahsm`, `validator`, `queue`
 - pushes versioned tags and `:testing`
 
 Images built:
 - `docker.sunet.se/eduseal/apigw` from `docker/apigw/Dockerfile`
 - `docker.sunet.se/eduseal/sealer_lunahsm` from `docker/sealer/lunahsm/Dockerfile`
 - `docker.sunet.se/eduseal/validator` from `docker/validator/Dockerfile`
+- `docker.sunet.se/eduseal/queue` from `docker/queue/Dockerfile`
 
 ## Docker Images Produced
 
@@ -83,6 +84,7 @@ Production images use two tags, promoted separately via `make release-prod`:
 | apigw     | `docker.sunet.se/eduseal/apigw:<version>`           | `docker.sunet.se/eduseal/apigw:testing`          | `docker.sunet.se/eduseal/apigw:prod`              |
 | sealer    | `docker.sunet.se/eduseal/sealer_lunahsm:<version>`  | `docker.sunet.se/eduseal/sealer_lunahsm:testing` | `docker.sunet.se/eduseal/sealer_lunahsm:prod`     |
 | validator | `docker.sunet.se/eduseal/validator:<version>`        | `docker.sunet.se/eduseal/validator:testing`       | `docker.sunet.se/eduseal/validator:prod`           |
+| queue | `docker.sunet.se/eduseal/queue:<version>`        | `docker.sunet.se/eduseal/queue:testing`       | `docker.sunet.se/eduseal/queue:prod`           |
 
 ## Examples
 
