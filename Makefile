@@ -236,7 +236,7 @@ docker-push-gobuild:
 	docker push $(DOCKER_TAG_GOBUILD)
 
 #### Release targets
-# Creates a single vX.Y.Z tag for ALL services (apigw, sealer, validator).
+# Creates a single vX.Y.Z tag for ALL services (apigw, sealer, validator, queue).
 # Usage:
 #   make release               # defaults to patch bump
 #   make release BUMP=patch    # v1.0.0 -> v1.0.1
@@ -282,7 +282,7 @@ release:
 	echo ""
 
 #### Local release publish
-# Builds and pushes apigw, sealer_lunahsm, validator images from a specific tag.
+# Builds and pushes apigw, sealer_lunahsm, validator, queue images from a specific tag.
 # Also updates :latest tags to point at that release.
 # Usage:
 #   make release-local TAG=v1.2.3
