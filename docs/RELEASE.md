@@ -44,7 +44,7 @@ If `BUMP` is omitted, `make release` uses `patch`.
 5. **Creates** an annotated git tag (`vX.Y.Z`).
 6. **Pushes** the tag to `origin`.
 7. **Locally publishes** release images automatically as part of `make release`:
-   - Builds Docker images for **all three** services.
+   - Builds Docker images for **all four** services.
    - Pushes images to `docker.sunet.se/eduseal/<image>:<version>` and `:testing`.
 
 ## Pre-requisites
