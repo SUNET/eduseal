@@ -123,11 +123,13 @@ type Client struct {
 	clientCertPEM        string
 	stats                stormStats
 	errorLogFile         *os.File
+	validatePDFPath      string
 }
 
 func main() {
 	versionFlag := flag.Bool("version", false, "print version and exit")
 	configFlag := flag.String("config", "", "path to YAML config file")
+	validatePDFFlag := flag.String("validate-pdf", "", "path to an existing PDF to submit to /api/v1/pdf/validate (skips testcase and storm mode)")
 	flag.Parse()
 
 	if *versionFlag {
@@ -211,6 +213,7 @@ func main() {
 		validationResponse: validationResponse{},
 		config:             config,
 		clientCertPEM:      clientCertPEM,
+		validatePDFPath:    *validatePDFFlag,
 	}
 
 	switch client.env {
@@ -231,6 +234,14 @@ func main() {
 	if err := client.getAccessToken(); err != nil {
 		fmt.Printf("\033[31m✗\033[0m could not get access token: %v\n", err)
 		os.Exit(1)
+	}
+
+	if client.validatePDFPath != "" {
+		if err := client.validateExistingPDF(); err != nil {
+			fmt.Printf("\033[31m✗\033[0m could not validate PDF: %v\n", err)
+			os.Exit(1)
+		}
+		return
 	}
 
 	// Check if storm mode is enabled
@@ -532,6 +543,30 @@ func (c *Client) fetchSealedPDFWithConfig(attemptNum int) error {
 	}
 
 	return errors.New("timed out waiting for sealed PDF")
+}
+
+func (c *Client) validateExistingPDF() error {
+	fmt.Printf("Reading PDF from %s...\n", c.validatePDFPath)
+
+	pdfBytes, err := os.ReadFile(filepath.Clean(c.validatePDFPath))
+	if err != nil {
+		return fmt.Errorf("failed to read PDF file: %v", err)
+	}
+
+	c.sealedPDF = base64.StdEncoding.EncodeToString(pdfBytes)
+
+	if err := c.validatePDF(); err != nil {
+		return err
+	}
+
+	fmt.Println("\033[32m\u2713\033[0m PDF validated successfully")
+	dataJSON, err := json.MarshalIndent(c.validationResponse.Data, "  ", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal validation response: %v", err)
+	}
+	fmt.Printf("  %s\n", dataJSON)
+
+	return nil
 }
 
 func (c *Client) validatePDF() error {
