@@ -5,14 +5,6 @@ definitions:
       data:
         $ref: '#/definitions/model.Document'
     type: object
-  apiv1.PDFRevokeReply:
-    properties:
-      data:
-        properties:
-          status:
-            type: boolean
-        type: object
-    type: object
   apiv1.PDFSignReply:
     properties:
       data:
@@ -74,27 +66,52 @@ definitions:
     type: object
   v1_validator.ValidateReply:
     properties:
+      coverage:
+        description: |-
+          coverage indicates how much of the file is covered by the signed byte
+          range. Values match pyHanko's SignatureCoverageLevel names
+          (UNCLEAR, CONTIGUOUS_BLOCK_FROM_START, ENTIRE_REVISION, ENTIRE_FILE).
+        type: string
+      docmdp_ok:
+        description: |-
+          docmdp_ok reports whether the certification-policy (DocMDP) check
+          succeeded. False indicates disallowed modifications were made after
+          the document was sealed.
+        type: boolean
       error:
         type: string
       intact_signature:
+        description: |-
+          intact_signature is true iff the cryptographic signature is intact AND
+          the signature covers the entire file (no post-signature bytes appended).
         type: boolean
+      modification_level:
+        description: |-
+          modification_level reports the severity of modifications made after
+          signing. Values match pyHanko's ModificationLevel names
+          (NONE, LTA_UPDATES, FORM_FILLING, ANNOTATIONS, OTHER).
+        type: string
       transaction_id:
         type: string
       valid_signature:
+        description: |-
+          valid_signature is true iff the signature passes pyHanko's overall
+          trust judgment (bottom_line): signer chain trusted, DocMDP policy
+          satisfied and no disallowed modifications were made after signing.
         type: boolean
       validation_backend:
         type: string
     type: object
 info:
   contact: {}
-  title: Datastore API
+  title: EduSeal API
   version: 0.1.0
 paths:
   /pdf/{transaction_id}:
     get:
       consumes:
       - application/json
-      description: fetch a singed pdf
+      description: fetch a sealed pdf
       operationId: pdf-fetch
       parameters:
       - description: transaction_id
@@ -113,41 +130,15 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/helpers.ErrorResponse'
-      summary: fetch singed pdf
+      summary: fetch sealed pdf
       tags:
-      - eduseal
-  /pdf/revoke/{transaction_id}:
-    put:
-      consumes:
-      - application/json
-      description: revoke a singed pdf
-      operationId: pdf-revoke
-      parameters:
-      - description: transaction_id
-        in: path
-        name: transaction_id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Success
-          schema:
-            $ref: '#/definitions/apiv1.PDFRevokeReply'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/helpers.ErrorResponse'
-      summary: revoke signed pdf
-      tags:
-      - eduseal
+      - EduSeal
   /pdf/sign:
     post:
       consumes:
       - application/json
-      description: sign base64 encoded PDF
-      operationId: pdf-sign
+      description: seal base64 encoded PDF
+      operationId: pdf-seal
       parameters:
       - description: ' '
         in: body
@@ -166,14 +157,14 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/helpers.ErrorResponse'
-      summary: Sign pdf
+      summary: Seal pdf
       tags:
-      - eduseal
+      - EduSeal
   /pdf/validate:
     post:
       consumes:
       - application/json
-      description: validate a signed base64 encoded PDF
+      description: validate a sealed base64 encoded PDF
       operationId: pdf-validate
       parameters:
       - description: ' '
@@ -195,5 +186,5 @@ paths:
             $ref: '#/definitions/helpers.ErrorResponse'
       summary: Validate pdf
       tags:
-      - eduseal
+      - EduSeal
 swagger: "2.0"

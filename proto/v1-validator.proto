@@ -18,8 +18,25 @@ message ValidateRequest {
 // ValidateReply return validation data
 message ValidateReply {
     string validation_backend = 1;
+    // intact_signature is true iff the cryptographic signature is intact AND
+    // the signature covers the entire file (no post-signature bytes appended).
     bool intact_signature = 2;
+    // valid_signature is true iff the signature passes pyHanko's overall
+    // trust judgment (bottom_line): signer chain trusted, DocMDP policy
+    // satisfied and no disallowed modifications were made after signing.
     bool valid_signature = 3;
     string transaction_id = 4;
     string error = 5;
+    // coverage indicates how much of the file is covered by the signed byte
+    // range. Values match pyHanko's SignatureCoverageLevel names
+    // (UNCLEAR, CONTIGUOUS_BLOCK_FROM_START, ENTIRE_REVISION, ENTIRE_FILE).
+    string coverage = 6;
+    // modification_level reports the severity of modifications made after
+    // signing. Values match pyHanko's ModificationLevel names
+    // (NONE, LTA_UPDATES, FORM_FILLING, ANNOTATIONS, OTHER).
+    string modification_level = 7;
+    // docmdp_ok reports whether the certification-policy (DocMDP) check
+    // succeeded. False indicates disallowed modifications were made after
+    // the document was sealed.
+    bool docmdp_ok = 8;
 }

@@ -70,12 +70,29 @@ func (x *ValidateRequest) GetData() string {
 type ValidateReply struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
 	ValidationBackend string                 `protobuf:"bytes,1,opt,name=validation_backend,json=validationBackend,proto3" json:"validation_backend,omitempty"`
-	IntactSignature   bool                   `protobuf:"varint,2,opt,name=intact_signature,json=intactSignature,proto3" json:"intact_signature,omitempty"`
-	ValidSignature    bool                   `protobuf:"varint,3,opt,name=valid_signature,json=validSignature,proto3" json:"valid_signature,omitempty"`
-	TransactionId     string                 `protobuf:"bytes,4,opt,name=transaction_id,json=transactionId,proto3" json:"transaction_id,omitempty"`
-	Error             string                 `protobuf:"bytes,5,opt,name=error,proto3" json:"error,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// intact_signature is true iff the cryptographic signature is intact AND
+	// the signature covers the entire file (no post-signature bytes appended).
+	IntactSignature bool `protobuf:"varint,2,opt,name=intact_signature,json=intactSignature,proto3" json:"intact_signature,omitempty"`
+	// valid_signature is true iff the signature passes pyHanko's overall
+	// trust judgment (bottom_line): signer chain trusted, DocMDP policy
+	// satisfied and no disallowed modifications were made after signing.
+	ValidSignature bool   `protobuf:"varint,3,opt,name=valid_signature,json=validSignature,proto3" json:"valid_signature,omitempty"`
+	TransactionId  string `protobuf:"bytes,4,opt,name=transaction_id,json=transactionId,proto3" json:"transaction_id,omitempty"`
+	Error          string `protobuf:"bytes,5,opt,name=error,proto3" json:"error,omitempty"`
+	// coverage indicates how much of the file is covered by the signed byte
+	// range. Values match pyHanko's SignatureCoverageLevel names
+	// (UNCLEAR, CONTIGUOUS_BLOCK_FROM_START, ENTIRE_REVISION, ENTIRE_FILE).
+	Coverage string `protobuf:"bytes,6,opt,name=coverage,proto3" json:"coverage,omitempty"`
+	// modification_level reports the severity of modifications made after
+	// signing. Values match pyHanko's ModificationLevel names
+	// (NONE, LTA_UPDATES, FORM_FILLING, ANNOTATIONS, OTHER).
+	ModificationLevel string `protobuf:"bytes,7,opt,name=modification_level,json=modificationLevel,proto3" json:"modification_level,omitempty"`
+	// docmdp_ok reports whether the certification-policy (DocMDP) check
+	// succeeded. False indicates disallowed modifications were made after
+	// the document was sealed.
+	DocmdpOk      bool `protobuf:"varint,8,opt,name=docmdp_ok,json=docmdpOk,proto3" json:"docmdp_ok,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ValidateReply) Reset() {
@@ -143,19 +160,43 @@ func (x *ValidateReply) GetError() string {
 	return ""
 }
 
+func (x *ValidateReply) GetCoverage() string {
+	if x != nil {
+		return x.Coverage
+	}
+	return ""
+}
+
+func (x *ValidateReply) GetModificationLevel() string {
+	if x != nil {
+		return x.ModificationLevel
+	}
+	return ""
+}
+
+func (x *ValidateReply) GetDocmdpOk() bool {
+	if x != nil {
+		return x.DocmdpOk
+	}
+	return false
+}
+
 var File_v1_validator_proto protoreflect.FileDescriptor
 
 const file_v1_validator_proto_rawDesc = "" +
 	"\n" +
 	"\x12v1-validator.proto\x12\fv1.validator\"%\n" +
 	"\x0fValidateRequest\x12\x12\n" +
-	"\x04data\x18\x01 \x01(\tR\x04data\"\xcf\x01\n" +
+	"\x04data\x18\x01 \x01(\tR\x04data\"\xb7\x02\n" +
 	"\rValidateReply\x12-\n" +
 	"\x12validation_backend\x18\x01 \x01(\tR\x11validationBackend\x12)\n" +
 	"\x10intact_signature\x18\x02 \x01(\bR\x0fintactSignature\x12'\n" +
 	"\x0fvalid_signature\x18\x03 \x01(\bR\x0evalidSignature\x12%\n" +
 	"\x0etransaction_id\x18\x04 \x01(\tR\rtransactionId\x12\x14\n" +
-	"\x05error\x18\x05 \x01(\tR\x05error2U\n" +
+	"\x05error\x18\x05 \x01(\tR\x05error\x12\x1a\n" +
+	"\bcoverage\x18\x06 \x01(\tR\bcoverage\x12-\n" +
+	"\x12modification_level\x18\a \x01(\tR\x11modificationLevel\x12\x1b\n" +
+	"\tdocmdp_ok\x18\b \x01(\bR\bdocmdpOk2U\n" +
 	"\tValidator\x12H\n" +
 	"\bValidate\x12\x1d.v1.validator.ValidateRequest\x1a\x1b.v1.validator.ValidateReply\"\x00B-Z+eduseal/internal/gen/validator/v1_validatorb\x06proto3"
 

@@ -9,9 +9,9 @@ PIPSYNC					:= $(VENV)/bin/pip-sync --index-url https://pypi.sunet.se/simple --p
 
 test: test-verifier test-datastore
 
-test-verifier:
+test-verifier: $(VENV)
 	$(info Testing verifier)
-	go test -v ./cmd/verifier
+	PYTHONPATH=src $(VENV)/bin/pytest -v src
 
 test-datastore:
 	$(info Testing datastore)

@@ -15,48 +15,9 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/pdf/revoke/{transaction_id}": {
-            "put": {
-                "description": "revoke a singed pdf",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "eduseal"
-                ],
-                "summary": "revoke signed pdf",
-                "operationId": "pdf-revoke",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "transaction_id",
-                        "name": "transaction_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Success",
-                        "schema": {
-                            "$ref": "#/definitions/apiv1.PDFRevokeReply"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/helpers.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/pdf/sign": {
             "post": {
-                "description": "sign base64 encoded PDF",
+                "description": "seal base64 encoded PDF",
                 "consumes": [
                     "application/json"
                 ],
@@ -64,10 +25,10 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "eduseal"
+                    "EduSeal"
                 ],
-                "summary": "Sign pdf",
-                "operationId": "pdf-sign",
+                "summary": "Seal pdf",
+                "operationId": "pdf-seal",
                 "parameters": [
                     {
                         "description": " ",
@@ -97,7 +58,7 @@ const docTemplate = `{
         },
         "/pdf/validate": {
             "post": {
-                "description": "validate a signed base64 encoded PDF",
+                "description": "validate a sealed base64 encoded PDF",
                 "consumes": [
                     "application/json"
                 ],
@@ -105,7 +66,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "eduseal"
+                    "EduSeal"
                 ],
                 "summary": "Validate pdf",
                 "operationId": "pdf-validate",
@@ -138,7 +99,7 @@ const docTemplate = `{
         },
         "/pdf/{transaction_id}": {
             "get": {
-                "description": "fetch a singed pdf",
+                "description": "fetch a sealed pdf",
                 "consumes": [
                     "application/json"
                 ],
@@ -146,9 +107,9 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "eduseal"
+                    "EduSeal"
                 ],
-                "summary": "fetch singed pdf",
+                "summary": "fetch sealed pdf",
                 "operationId": "pdf-fetch",
                 "parameters": [
                     {
@@ -182,19 +143,6 @@ const docTemplate = `{
             "properties": {
                 "data": {
                     "$ref": "#/definitions/model.Document"
-                }
-            }
-        },
-        "apiv1.PDFRevokeReply": {
-            "type": "object",
-            "properties": {
-                "data": {
-                    "type": "object",
-                    "properties": {
-                        "status": {
-                            "type": "boolean"
-                        }
-                    }
                 }
             }
         },
@@ -293,16 +241,30 @@ const docTemplate = `{
         "v1_validator.ValidateReply": {
             "type": "object",
             "properties": {
+                "coverage": {
+                    "description": "coverage indicates how much of the file is covered by the signed byte\nrange. Values match pyHanko's SignatureCoverageLevel names\n(UNCLEAR, CONTIGUOUS_BLOCK_FROM_START, ENTIRE_REVISION, ENTIRE_FILE).",
+                    "type": "string"
+                },
+                "docmdp_ok": {
+                    "description": "docmdp_ok reports whether the certification-policy (DocMDP) check\nsucceeded. False indicates disallowed modifications were made after\nthe document was sealed.",
+                    "type": "boolean"
+                },
                 "error": {
                     "type": "string"
                 },
                 "intact_signature": {
+                    "description": "intact_signature is true iff the cryptographic signature is intact AND\nthe signature covers the entire file (no post-signature bytes appended).",
                     "type": "boolean"
+                },
+                "modification_level": {
+                    "description": "modification_level reports the severity of modifications made after\nsigning. Values match pyHanko's ModificationLevel names\n(NONE, LTA_UPDATES, FORM_FILLING, ANNOTATIONS, OTHER).",
+                    "type": "string"
                 },
                 "transaction_id": {
                     "type": "string"
                 },
                 "valid_signature": {
+                    "description": "valid_signature is true iff the signature passes pyHanko's overall\ntrust judgment (bottom_line): signer chain trusted, DocMDP policy\nsatisfied and no disallowed modifications were made after signing.",
                     "type": "boolean"
                 },
                 "validation_backend": {
@@ -319,7 +281,7 @@ var SwaggerInfo = &swag.Spec{
 	Host:             "",
 	BasePath:         "/api/v1",
 	Schemes:          []string{},
-	Title:            "Datastore API",
+	Title:            "EduSeal API",
 	Description:      "",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,

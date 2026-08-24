@@ -5,12 +5,12 @@ import time
 import os
 import signal
 import threading
-from typing import Optional
 import itertools
 from concurrent import futures
 import grpc
 
 from pyhanko.sign.validation import validate_pdf_signature
+from pyhanko.sign.validation.status import SignatureCoverageLevel
 from pyhanko_certvalidator import ValidationContext
 from pyhanko.keys import load_cert_from_pemder
 from pyhanko.pdf_utils.reader import PdfFileReader
@@ -19,6 +19,22 @@ from eduseal.validator.v1_validator_pb2 import ValidateReply, ValidateRequest
 import eduseal.validator.v1_validator_pb2_grpc as pb2_grpc
 from eduseal.validator.config import parse, CFG
 from eduseal.cert_reloader import CertReloader
+
+
+def compute_verdict(status) -> tuple[bool, bool]:
+    """Reduce a pyHanko signature status to (intact_signature, valid_signature).
+
+    A sealed document must be byte-for-byte what was signed: anything appended
+    after the signed byte range (incremental update, forged revision) means the
+    file the caller sees is not the file that was sealed, even when the raw
+    signature bytes still verify. Report intact only when the signature covers
+    the entire file.
+    """
+    intact_signature = bool(status.intact) and (
+        status.coverage == SignatureCoverageLevel.ENTIRE_FILE
+    )
+    valid_signature = bool(status.bottom_line)
+    return intact_signature, valid_signature
 
 class Common():
     def __init__(self):
@@ -37,7 +53,7 @@ class Common():
         self.logger.addHandler(ch)
         
         # File handler
-        fh = logging.FileHandler("/var/log/sunet/validator.log")
+        fh = logging.FileHandler(os.getenv("EDUSEAL_LOG_PATH", "/var/log/sunet/validator.log"))
         fh.setLevel(logging.DEBUG)
         fh.setFormatter(formatter)
         self.logger.addHandler(fh)
@@ -136,27 +152,50 @@ class Validator(Common, pb2_grpc.ValidatorServicer):
             self.logger.error(f"Error getting transaction_id: {e}")
             return ValidateReply(
                 validation_backend=self.service_name,
-                error=f"Error getting transaction_id {e}",
+                error=str(e),
             )
 
         self.logger.info(f"Validate a signed base64 PDF, transaction_id:{transaction_id}")
 
+        coverage_name = status.coverage.name if status.coverage is not None else ""
+        modification_level_name = (
+            status.modification_level.name
+            if status.modification_level is not None
+            else ""
+        )
+        docmdp_ok = bool(status.docmdp_ok) if status.docmdp_ok is not None else False
+
+        intact_signature, valid_signature = compute_verdict(status)
+
+        if not (intact_signature and valid_signature):
+            self.logger.warning(
+                "signature verdict failed "
+                f"transaction_id={transaction_id} "
+                f"intact={status.intact} valid={status.valid} "
+                f"coverage={coverage_name} "
+                f"modification_level={modification_level_name} "
+                f"docmdp_ok={docmdp_ok}"
+            )
+
         return ValidateReply(
             validation_backend=self.service_name,
-            intact_signature=status.intact,
-            valid_signature=status.valid,
+            intact_signature=intact_signature,
+            valid_signature=valid_signature,
             transaction_id=transaction_id,
             error="",
+            coverage=coverage_name,
+            modification_level=modification_level_name,
+            docmdp_ok=docmdp_ok,
         )
 
-    def get_transaction_id_from_keywords(self,pdf: PdfFileReader) -> Optional[str]:
-        """simple function to get transaction_id from a list of keywords"""
+    def get_transaction_id_from_keywords(self, pdf: PdfFileReader) -> str:
+        """Return the transaction_id keyword, or raise if the sealed PDF has none."""
         for keyword in pdf.document_meta_view.keywords:
             entry = keyword.split(sep=":")
             if entry[0] == "transaction_id":
                 self.logger.info(msg=f"found transaction_id: {entry[1]}")
                 return entry[1]
-        return None
+        raise ValueError("No transaction_id found in sealed PDF")
 
 class GRPCServer(Common):
     GRACEFUL_SHUTDOWN_TIMEOUT = 30  # seconds to wait for in-progress RPCs
