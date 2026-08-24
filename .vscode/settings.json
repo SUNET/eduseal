@@ -18,6 +18,7 @@
         "deadcode",
         "dgryski",
         "difflib",
+        "docmdp",
         "eduseal",
         "envconfig",
         "etcdclient",

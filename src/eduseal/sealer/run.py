@@ -43,7 +43,7 @@ class Common():
         self.logger.addHandler(ch)
         
         # File handler
-        fh = logging.FileHandler("/var/log/sunet/sealer.log")
+        fh = logging.FileHandler(os.getenv("EDUSEAL_LOG_PATH", "/var/log/sunet/sealer.log"))
         fh.setLevel(logging.DEBUG)
         fh.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
         self.logger.addHandler(fh)
@@ -101,6 +101,16 @@ class Sealer(Common, pb2_grpc.SealerServicer):
                 transaction_id=in_data.transaction_id,
                 data="",
                 error=f"input pdf is not valid, err: {_e}",
+                sealer_backend=self.service_name,
+            )
+
+        if pdf_writer.security_handler is not None:
+            err_msg = "input pdf is encrypted; please provide an unencrypted document"
+            self.logger.info(f"{err_msg} transaction_id={in_data.transaction_id}")
+            return SealReply(
+                transaction_id=in_data.transaction_id,
+                data="",
+                error=err_msg,
                 sealer_backend=self.service_name,
             )
 
