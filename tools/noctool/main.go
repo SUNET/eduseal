@@ -395,13 +395,13 @@ func (c *Client) checkPDFSealing(shouldSave bool) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to seal PDF, status: %s", resp.Status)
-	}
-
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("failed to seal PDF, status: %s, body: %s", resp.Status, string(bodyBytes))
 	}
 
 	responsePayload := map[string]any{}
@@ -427,11 +427,7 @@ func (c *Client) checkPDFSealing(shouldSave bool) error {
 		return err
 	}
 
-	fmt.Println("\033[32m\u2713\033[0m PDF validated successfully")
-	fmt.Printf("  Transaction ID: %s\n", c.validationResponse.Data.TransactionID)
-	fmt.Printf("  Backend: %s\n", c.validationResponse.Data.ValidationBackend)
-	fmt.Printf("  Intact Signature: %v\n", c.validationResponse.Data.IntactSignature)
-	fmt.Printf("  Valid Signature: %v\n", c.validationResponse.Data.ValidSignature)
+	c.printValidationResult()
 
 	if err := c.savePDF(shouldSave); err != nil {
 		return err
@@ -559,14 +555,22 @@ func (c *Client) validateExistingPDF() error {
 		return err
 	}
 
-	fmt.Println("\033[32m\u2713\033[0m PDF validated successfully")
-	dataJSON, err := json.MarshalIndent(c.validationResponse.Data, "  ", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal validation response: %v", err)
-	}
-	fmt.Printf("  %s\n", dataJSON)
+	c.printValidationResult()
 
 	return nil
+}
+
+func (c *Client) printValidationResult() {
+	data := c.validationResponse.Data
+	if data.IntactSignature && data.ValidSignature {
+		fmt.Println("\033[32m\u2713\033[0m PDF validated successfully")
+	} else {
+		fmt.Println("\033[31m\u2717\033[0m PDF validation failed")
+	}
+	fmt.Printf("  Transaction ID: %s\n", data.TransactionID)
+	fmt.Printf("  Backend: %s\n", data.ValidationBackend)
+	fmt.Printf("  Intact Signature: %v\n", data.IntactSignature)
+	fmt.Printf("  Valid Signature: %v\n", data.ValidSignature)
 }
 
 func (c *Client) validatePDF() error {
@@ -594,13 +598,13 @@ func (c *Client) validatePDF() error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to validate PDF, status: %s", resp.Status)
-	}
-
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("failed to validate PDF, status: %s, body: %s", resp.Status, string(bodyBytes))
 	}
 
 	if err := json.Unmarshal(bodyBytes, &c.validationResponse); err != nil {
