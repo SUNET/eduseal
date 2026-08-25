@@ -427,7 +427,9 @@ func (c *Client) checkPDFSealing(shouldSave bool) error {
 		return err
 	}
 
-	c.printValidationResult()
+	if err := c.printValidationResult(); err != nil {
+		return err
+	}
 
 	if err := c.savePDF(shouldSave); err != nil {
 		return err
@@ -555,14 +557,13 @@ func (c *Client) validateExistingPDF() error {
 		return err
 	}
 
-	c.printValidationResult()
-
-	return nil
+	return c.printValidationResult()
 }
 
-func (c *Client) printValidationResult() {
+func (c *Client) printValidationResult() error {
 	data := c.validationResponse.Data
-	if data.IntactSignature && data.ValidSignature {
+	valid := data.IntactSignature && data.ValidSignature
+	if valid {
 		fmt.Println("\033[32m\u2713\033[0m PDF validated successfully")
 	} else {
 		fmt.Println("\033[31m\u2717\033[0m PDF validation failed")
@@ -571,6 +572,10 @@ func (c *Client) printValidationResult() {
 	fmt.Printf("  Backend: %s\n", data.ValidationBackend)
 	fmt.Printf("  Intact Signature: %v\n", data.IntactSignature)
 	fmt.Printf("  Valid Signature: %v\n", data.ValidSignature)
+	if !valid {
+		return fmt.Errorf("PDF validation failed: intact_signature=%v, valid_signature=%v", data.IntactSignature, data.ValidSignature)
+	}
+	return nil
 }
 
 func (c *Client) validatePDF() error {
