@@ -123,11 +123,13 @@ type Client struct {
 	clientCertPEM        string
 	stats                stormStats
 	errorLogFile         *os.File
+	validatePDFPath      string
 }
 
 func main() {
 	versionFlag := flag.Bool("version", false, "print version and exit")
 	configFlag := flag.String("config", "", "path to YAML config file")
+	validatePDFFlag := flag.String("validate-pdf", "", "path to an existing PDF to submit to /api/v1/pdf/validate (skips testcase and storm mode)")
 	flag.Parse()
 
 	if *versionFlag {
@@ -211,6 +213,7 @@ func main() {
 		validationResponse: validationResponse{},
 		config:             config,
 		clientCertPEM:      clientCertPEM,
+		validatePDFPath:    *validatePDFFlag,
 	}
 
 	switch client.env {
@@ -231,6 +234,14 @@ func main() {
 	if err := client.getAccessToken(); err != nil {
 		fmt.Printf("\033[31m✗\033[0m could not get access token: %v\n", err)
 		os.Exit(1)
+	}
+
+	if client.validatePDFPath != "" {
+		if err := client.validateExistingPDF(); err != nil {
+			fmt.Printf("\033[31m✗\033[0m could not validate PDF: %v\n", err)
+			os.Exit(1)
+		}
+		return
 	}
 
 	// Check if storm mode is enabled
@@ -384,13 +395,13 @@ func (c *Client) checkPDFSealing(shouldSave bool) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to seal PDF, status: %s", resp.Status)
-	}
-
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("failed to seal PDF, status: %s, body: %s", resp.Status, string(bodyBytes))
 	}
 
 	responsePayload := map[string]any{}
@@ -416,11 +427,9 @@ func (c *Client) checkPDFSealing(shouldSave bool) error {
 		return err
 	}
 
-	fmt.Println("\033[32m\u2713\033[0m PDF validated successfully")
-	fmt.Printf("  Transaction ID: %s\n", c.validationResponse.Data.TransactionID)
-	fmt.Printf("  Backend: %s\n", c.validationResponse.Data.ValidationBackend)
-	fmt.Printf("  Intact Signature: %v\n", c.validationResponse.Data.IntactSignature)
-	fmt.Printf("  Valid Signature: %v\n", c.validationResponse.Data.ValidSignature)
+	if err := c.printValidationResult(); err != nil {
+		return err
+	}
 
 	if err := c.savePDF(shouldSave); err != nil {
 		return err
@@ -534,6 +543,41 @@ func (c *Client) fetchSealedPDFWithConfig(attemptNum int) error {
 	return errors.New("timed out waiting for sealed PDF")
 }
 
+func (c *Client) validateExistingPDF() error {
+	fmt.Printf("Reading PDF from %s...\n", c.validatePDFPath)
+
+	pdfBytes, err := os.ReadFile(filepath.Clean(c.validatePDFPath))
+	if err != nil {
+		return fmt.Errorf("failed to read PDF file: %v", err)
+	}
+
+	c.sealedPDF = base64.StdEncoding.EncodeToString(pdfBytes)
+
+	if err := c.validatePDF(); err != nil {
+		return err
+	}
+
+	return c.printValidationResult()
+}
+
+func (c *Client) printValidationResult() error {
+	data := c.validationResponse.Data
+	valid := data.IntactSignature && data.ValidSignature
+	if valid {
+		fmt.Println("\033[32m\u2713\033[0m PDF validated successfully")
+	} else {
+		fmt.Println("\033[31m\u2717\033[0m PDF validation failed")
+	}
+	fmt.Printf("  Transaction ID: %s\n", data.TransactionID)
+	fmt.Printf("  Backend: %s\n", data.ValidationBackend)
+	fmt.Printf("  Intact Signature: %v\n", data.IntactSignature)
+	fmt.Printf("  Valid Signature: %v\n", data.ValidSignature)
+	if !valid {
+		return fmt.Errorf("PDF validation failed: intact_signature=%v, valid_signature=%v", data.IntactSignature, data.ValidSignature)
+	}
+	return nil
+}
+
 func (c *Client) validatePDF() error {
 	fmt.Println("Validating PDF...")
 
@@ -559,13 +603,13 @@ func (c *Client) validatePDF() error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to validate PDF, status: %s", resp.Status)
-	}
-
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("failed to validate PDF, status: %s, body: %s", resp.Status, string(bodyBytes))
 	}
 
 	if err := json.Unmarshal(bodyBytes, &c.validationResponse); err != nil {

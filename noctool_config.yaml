@@ -9,9 +9,9 @@ oauth:
 
 env: test
 testcase: ladok
-save: true
-client_cert: ./client.cert
-client_cert_key: ./client.key
+save: false
+client_cert: /home/masv/client.cert
+client_cert_key: /home/masv/client.key
 pdf_size: small  # Options: small, medium, big
 
 # Storm mode configuration for continuous testing

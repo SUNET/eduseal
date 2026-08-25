@@ -14,12 +14,19 @@ make build-noctool  # produces bin/noctool
 noctool -config <path-to-config.yaml>
 ```
 
+Validate a pre-existing PDF (skips the configured `testcase` and storm mode):
+
+```bash
+noctool -config <path-to-config.yaml> -validate-pdf <path-to.pdf>
+```
+
 ### Flags
 
-| Flag       | Type   | Description                                          |
-|------------|--------|------------------------------------------------------|
-| `-config`  | string | **Required.** Path to the YAML configuration file.   |
-| `-version` | bool   | Print the git tag, commit hash, and build date, then exit. |
+| Flag            | Type   | Description                                                                                                    |
+|-----------------|--------|----------------------------------------------------------------------------------------------------------------|
+| `-config`       | string | **Required.** Path to the YAML configuration file.                                                             |
+| `-validate-pdf` | string | Path to an existing PDF to submit directly to `/api/v1/pdf/validate`. When set, `testcase` and storm are skipped. |
+| `-version`      | bool   | Print the git tag, commit hash, and build date, then exit.                                                     |
 
 ## Configuration
 
