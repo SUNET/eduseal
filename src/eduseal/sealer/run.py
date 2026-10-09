@@ -2,6 +2,7 @@ import logging
 from io import BytesIO
 import os
 import base64
+import hashlib
 import signal
 import ssl
 import json
@@ -173,6 +174,18 @@ class Sealer(Common, pb2_grpc.SealerServicer):
             )
 
         try:
+            signed_pdf_sha256 = hashlib.sha256(signed_pdf.getvalue()).hexdigest()
+        except Exception as _e:
+            err_msg = f"calculating sha256 hash failed, err: {_e}"
+            self.logger.error("error: " + err_msg)
+            return SealReply(
+                transaction_id=in_data.transaction_id,
+                data="",
+                error=err_msg,
+                sealer_backend=self.service_name,
+            )
+
+        try:
             base64_encoded = base64.b64encode(signed_pdf.getvalue()).decode("utf-8")
         except Exception as _e:
             err_msg = f"output pdf base64 encoding failed, err: {_e}"
@@ -190,7 +203,7 @@ class Sealer(Common, pb2_grpc.SealerServicer):
         if seal_elapsed > 4.0:
             self.logger.error(f"sealing took {seal_elapsed:.2f}s (>{4.0}s) for transaction_id: {in_data.transaction_id}")
 
-        self.logger.info(f"signing done {in_data.transaction_id}")
+        self.logger.info(f"signing done transaction_id={in_data.transaction_id} sha256={signed_pdf_sha256}")
     
         return SealReply(
             sealer_backend=self.service_name,
