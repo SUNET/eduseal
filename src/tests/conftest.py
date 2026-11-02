@@ -1,4 +1,5 @@
 import base64
+import inspect
 import os
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -124,7 +125,14 @@ def sealer(tmp_path_factory: pytest.TempPathFactory):
     # so we can exercise Seal()'s pre-PKCS11 branches (base64, PDF parse,
     # encryption detection).
     original_open = sealer_run.open_pkcs11_session
-    sealer_run.open_pkcs11_session = lambda **kwargs: MagicMock(name="pkcs11.Session")
+    original_sig = inspect.signature(original_open)
+
+    def fake_open(*args, **kwargs):
+        # Fail on kwargs the installed pyhanko no longer accepts.
+        original_sig.bind(*args, **kwargs)
+        return MagicMock(name="pkcs11.Session")
+
+    sealer_run.open_pkcs11_session = fake_open
     try:
         instance = sealer_run.Sealer()
     finally:
