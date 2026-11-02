@@ -8,6 +8,7 @@ import json
 import time
 
 from pkcs11 import Session, UserAlreadyLoggedIn
+from pyhanko.config.pkcs11 import TokenCriteria
 from pyhanko.sign.pkcs11 import open_pkcs11_session
 from pyhanko.sign import signers
 from pyhanko.sign.fields import SigSeedSubFilter
@@ -71,7 +72,7 @@ class Sealer(Common, pb2_grpc.SealerServicer):
             self.pkc11_session = open_pkcs11_session(
                 lib_location=self.config.pkcs11.module, 
                 slot_no=self.config.pkcs11.slot, 
-                token_label=self.config.pkcs11.label,
+                token_criteria=TokenCriteria(label=self.config.pkcs11.label),
                 user_pin=self.config.pkcs11.pin,
             )
         except UserAlreadyLoggedIn:
